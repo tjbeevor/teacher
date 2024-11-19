@@ -379,21 +379,29 @@ def main():
                         st.success(f"🎉 Quiz completed! Score: {final_score}%")
 
         # Progress visualization
+        
+        
         progress_data = st.session_state.tutor.progress_tracker.load_history()
         if progress_data:
             df = pd.DataFrame(progress_data)
-            fig = px.line(df, x='timestamp', y='score', color='subject',
-                         title='Performance Over Time',
-                         template='seaborn')
-            fig.update_layout(
-                plot_bgcolor='white',
-                paper_bgcolor='white',
-                font={'color': '#1E3A8A'},
-                title={'font': {'size': 20}},
-                xaxis={'gridcolor': '#E2E8F0'},
-                yaxis={'gridcolor': '#E2E8F0'}
+            # Create the figure
+        fig = px.line(df, x='timestamp', y='score', color='subject',
+                  title='Performance Over Time',
+                  template='seaborn')
+        # Update the layout only after creating the figure
+        fig.update_layout(
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font={'color': '#1E3A8A'},
+            title={'font': {'size': 20}},
+            xaxis={'gridcolor': '#E2E8F0'},
+            yaxis={'gridcolor': '#E2E8F0'}
         )
+        # Display the figure
         st.plotly_chart(fig, use_container_width=True)
+              
+                
+        
 
         # Reset session button
         if st.sidebar.button("🔄 Reset Session"):
