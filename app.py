@@ -8,7 +8,7 @@ import os
 from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor
 
-# Configurationf
+# Configuration
 os.environ["STREAMLIT_SERVER_WATCH_PATCHING"] = "false"
 
 # Page configuration
@@ -32,7 +32,7 @@ if 'quiz_score' not in st.session_state:
 if 'current_question' not in st.session_state:
     st.session_state.current_question = 0
 
-# Apply the same CSS styles (unchanged from your original code)
+# Apply CSS styles
 st.markdown("""
     <style>
         .main {background-color: #f8f9fa;}
@@ -243,14 +243,11 @@ class ProgressTracker:
             st.warning(f"Could not save progress: {e}")
 
 def main():
-    # Initialize the tutor if not already initialized
     if 'tutor' not in st.session_state:
         st.session_state.tutor = AITutor()
 
-    # Create two columns for the layout
     chat_col, viz_col = st.columns([2, 1])
 
-    # Sidebar configuration
     with st.sidebar:
         st.markdown("""
             <div style='text-align: center; padding-bottom: 1rem;'>
@@ -291,7 +288,14 @@ def main():
                     st.session_state.messages.append({"role": "assistant", "content": response})
                 st.success("✨ Session started!")
 
-    # Chat column
+        if st.button("🔄 Reset Session"):
+            st.session_state.messages = []
+            st.session_state.quiz_active = False
+            st.session_state.current_quiz = None
+            st.session_state.quiz_score = 0
+            st.session_state.current_question = 0
+            st.experimental_rerun()
+
     with chat_col:
         st.markdown("""
             <div class='chat-container'>
@@ -316,7 +320,6 @@ def main():
             
             st.session_state.messages.append({"role": "assistant", "content": response})
 
-    # Visualization column
     with viz_col:
         st.markdown("""
             <div class='chat-container'>
@@ -340,7 +343,6 @@ def main():
                     st.session_state.quiz_score = 0
                     st.session_state.current_question = 0
 
-        # Quiz logic
         if st.session_state.quiz_active and st.session_state.current_quiz:
             quiz_data = st.session_state.current_quiz
             current_q = st.session_state.current_question
@@ -376,41 +378,29 @@ def main():
                             final_score
                         )
                         st.session_state.quiz_active = False
+                        st.success(f"🎉 Quiz completed! Score: {final_score}%
+
+st.session_state.quiz_active = False
                         st.success(f"🎉 Quiz completed! Score: {final_score}%")
 
-        # Progress visualization
-        
-        
-        progress_data = st.session_state.tutor.progress_tracker.load_history()
-        if progress_data:
-            df = pd.DataFrame(progress_data)
-            # Create the figure
-        fig = px.line(df, x='timestamp', y='score', color='subject',
-                  title='Performance Over Time',
-                  template='seaborn')
-        # Update the layout only after creating the figure
-        fig.update_layout(
-            plot_bgcolor='white',
-            paper_bgcolor='white',
-            font={'color': '#1E3A8A'},
-            title={'font': {'size': 20}},
-            xaxis={'gridcolor': '#E2E8F0'},
-            yaxis={'gridcolor': '#E2E8F0'}
-        )
-        # Display the figure
-        st.plotly_chart(fig, use_container_width=True)
-              
-                
-        
-
-        # Reset session button
-        if st.sidebar.button("🔄 Reset Session"):
-            st.session_state.messages = []
-            st.session_state.quiz_active = False
-            st.session_state.current_quiz = None
-            st.session_state.quiz_score = 0
-            st.session_state.current_question = 0
-            st.experimental_rerun()
+        try:
+            progress_data = st.session_state.tutor.progress_tracker.load_history()
+            if progress_data and len(progress_data) > 0:
+                df = pd.DataFrame(progress_data)
+                fig = px.line(df, x='timestamp', y='score', color='subject',
+                             title='Performance Over Time',
+                             template='seaborn')
+                fig.update_layout(
+                    plot_bgcolor='white',
+                    paper_bgcolor='white',
+                    font={'color': '#1E3A8A'},
+                    title={'font': {'size': 20}},
+                    xaxis={'gridcolor': '#E2E8F0'},
+                    yaxis={'gridcolor': '#E2E8F0'}
+                )
+                st.plotly_chart(fig, use_container_width=True)
+        except Exception as e:
+            st.warning("No progress data available yet.")
 
 if __name__ == "__main__":
     try:
