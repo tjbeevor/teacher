@@ -8,7 +8,7 @@ import os
 from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor
 
-# Configuration
+# Configurationf
 os.environ["STREAMLIT_SERVER_WATCH_PATCHING"] = "false"
 
 # Page configuration
