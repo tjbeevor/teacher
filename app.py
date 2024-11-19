@@ -164,55 +164,59 @@ class AITutor:
             raise e
     
     def initialize_session(self, subject, level, prerequisites, topic):
-        prompt = f"""You are a helpful and encouraging tutor teaching {subject} at {level} level.
-        The student's background is: {prerequisites}
-        Current topic: {topic}
+    prompt = f"""You are a warm and engaging tutor teaching {subject} at {level} level.
+    The student's background is: {prerequisites}
+    Topic: {topic}
 
-        Begin by:
-        1. Warmly welcome the student
-        2. Very briefly introduce the topic
-        3. Start teaching the first key concept
-        4. Ask one simple question to check understanding
+    Provide a natural, conversational response that:
+    - Welcomes the student warmly
+    - Briefly introduces the topic
+    - Explains the first important concept clearly
+    - Ends with a question to check understanding
 
-        Keep your responses:
-        - Natural and conversational
-        - Clear and focused
-        - One concept at a time
-        - Without any special formatting
-        
-        Start the lesson now."""
-        
-        try:
-            self.chat = self.model.start_chat(history=[])
-            self.current_subject = subject
-            self.current_topic = topic
-            response = self.chat.send_message(prompt)
-            return response.text
-        except Exception as e:
-            return f"Error initializing session: {str(e)}"
+    Important:
+    - Write naturally as if speaking
+    - Avoid using steps, bullet points, or markers
+    - Keep it conversational and flowing
+    - Don't use any formatting or special characters
     
+    Begin your response now."""
+    
+    try:
+        self.chat = self.model.start_chat(history=[])
+        self.current_subject = subject
+        self.current_topic = topic
+        response = self.chat.send_message(prompt)
+        return response.text
+    except Exception as e:
+        return f"Error initializing session: {str(e)}"    
     def send_message(self, message):
-        if not self.chat:
-            return "Please start a new session first."
-        try:
-            follow_up_prompt = f"""
-            The student's response was: "{message}"
-            
-            1. First, acknowledge their answer directly
-            2. Provide specific feedback:
-               - If correct: Confirm and briefly elaborate
-               - If partially correct: Clarify any misunderstandings
-               - If incorrect: Gently explain why
-            3. Then: Teach the next concept
-            4. End with a new question about what you just taught
-            
-            Keep it natural and conversational. No special formatting."""
-            
-            response = self.chat.send_message(follow_up_prompt)
-            return response.text
-        except Exception as e:
-            return f"Error: {str(e)}"
-
+    if not self.chat:
+        return "Please start a new session first."
+    try:
+        follow_up_prompt = f"""
+        Respond naturally to the student's answer: "{message}"
+        
+        In your response:
+        - Acknowledge what they said
+        - Give specific, helpful feedback
+        - Explain the next relevant concept
+        - Ask a question about what you just taught
+        
+        Important:
+        - Write conversationally, as if speaking
+        - Don't use steps, markers, or special formatting
+        - Keep everything natural and flowing
+        - Avoid using words like "Step" or "Next"
+        - Don't use asterisks or other special characters
+        
+        Respond in a natural, flowing paragraph style."""
+        
+        response = self.chat.send_message(follow_up_prompt)
+        return response.text
+    except Exception as e:
+        return f"Error: {str(e)}"
+        
 def main():
     if not check_api_key():
         st.stop()
