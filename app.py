@@ -346,6 +346,12 @@ def main():
                     st.session_state.messages.append({"role": "assistant", "content": response})
                     st.session_state.quiz_active = False
                 st.success("✨ Session started successfully!")
+
+                st.markdown("---")
+if st.button("🔄 Reset Session"):
+    st.session_state.messages = []
+    st.session_state.quiz_active = False
+    st.rerun()
     
     # Main content area with enhanced styling
     chat_col, viz_col = st.columns([2, 1])
