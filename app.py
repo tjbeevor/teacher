@@ -387,47 +387,47 @@ async def main():
             st.session_state.tutor = OptimizedAITutor()
             st.rerun()
 
-    # Main content area
-   chat_col, viz_col = st.columns([2, 1])
+# Main content area
+chat_col, viz_col = st.columns([2, 1])
+
+with chat_col:
+    st.markdown(
+        """
+        <div class='chat-container'>
+            <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>💬 Learning Conversation</h3>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
     
-    with chat_col:
-        st.markdown(
-            """
-            <div class='chat-container'>
-                <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>💬 Learning Conversation</h3>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        
-        display_chat_messages()
-        await handle_chat_input(st.session_state.tutor)
+    display_chat_messages()
+    await handle_chat_input(st.session_state.tutor)
+
+with viz_col:
+    st.markdown(
+        """
+        <div class='chat-container'>
+            <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>📈 Learning Progress</h3>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
     
-    with viz_col:
-        st.markdown(
-            """
-            <div class='chat-container'>
-                <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>📈 Learning Progress</h3>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        
-        if st.button("📝 Take Quiz"):
-            if not topic:
-                st.error("⚠️ Please start a session first")
-            else:
-                st.session_state.quiz_active = True
-                with st.spinner("⚙️ Generating quiz..."):
-                    quiz_data = st.session_state.tutor.quiz_generator.generate_quiz(
-                        subject,
-                        topic,
-                        level
-                    )
-                if quiz_data:
-                    st.session_state.current_quiz = quiz_data
-                    st.session_state.quiz_score = 0
-                    st.session_state.current_question = 0
+    if st.button("📝 Take Quiz"):
+        if not topic:
+            st.error("⚠️ Please start a session first")
+        else:
+            st.session_state.quiz_active = True
+            with st.spinner("⚙️ Generating quiz..."):
+                quiz_data = st.session_state.tutor.quiz_generator.generate_quiz(
+                    subject,
+                    topic,
+                    level
+                )
+            if quiz_data:
+                st.session_state.current_quiz = quiz_data
+                st.session_state.quiz_score = 0
+                st.session_state.current_question = 0
         
         if st.session_state.quiz_active and hasattr(st.session_state, 'current_quiz'):
             question = st.session_state.current_quiz['questions'][st.session_state.current_question]
