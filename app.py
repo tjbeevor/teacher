@@ -6,13 +6,12 @@ from datetime import datetime
 import json
 import os
 
-os.environ["STREAMLIT_SERVER_WATCH_PATCHING"] = "false"
-
 st.set_page_config(
-    page_title="AI Tutor | Interactive Learning",
+    page_title="AI Tutor",
     page_icon="🎓",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
+    menu_items={"Get help": None, "Report a bug": None, "About": None}
 )
 
 st.markdown("""
