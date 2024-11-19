@@ -6,7 +6,7 @@ from datetime import datetime
 import json
 import os
 
-# Enhanced page configuration
+# Page configuration
 st.set_page_config(
     page_title="AI Tutor | Interactive Learning",
     page_icon="🎓",
@@ -14,15 +14,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Enhanced Custom CSS
+# Custom CSS
 st.markdown("""
     <style>
-        /* Main page styling */
         .main {
             background-color: #f8f9fa;
         }
-        
-        /* Header styling */
         .main-header {
             font-family: 'Helvetica Neue', sans-serif;
             color: #1E3A8A;
@@ -32,15 +29,11 @@ st.markdown("""
             border-radius: 10px;
             margin-bottom: 2rem;
         }
-        
-        /* Sidebar styling */
         .css-1d391kg {
             background-color: #f1f5f9;
             padding: 2rem 1rem;
             border-right: 1px solid #e2e8f0;
         }
-        
-        /* Button styling */
         .stButton>button {
             width: 100%;
             border-radius: 8px;
@@ -50,13 +43,10 @@ st.markdown("""
             padding: 0.5rem 1rem;
             transition: all 0.3s ease;
         }
-        
         .stButton>button:hover {
             background-color: #2563EB;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
-        
-        /* Chat container styling */
         .chat-container {
             background-color: white;
             border-radius: 10px;
@@ -64,69 +54,9 @@ st.markdown("""
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             margin-bottom: 1rem;
         }
-        
-        /* Message styling */
-        .stChat {
-            border-radius: 8px;
-            margin-bottom: 1rem;
-        }
-        
-        /* Input box styling */
-        .stTextInput>div>div>input {
-            border-radius: 8px;
-        }
-        
-        /* Progress section styling */
-        .progress-section {
-            background-color: white;
-            border-radius: 10px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-        
-        /* Quiz styling */
-        .quiz-container {
-            background-color: white;
-            border-radius: 10px;
-            padding: 1.5rem;
-            margin-top: 1rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-        
-        /* Success message styling */
-        .success-message {
-            padding: 1rem;
-            border-radius: 8px;
-            background-color: #dcfce7;
-            color: #166534;
-            margin: 1rem 0;
-        }
-        
-        /* Error message styling */
-        .error-message {
-            padding: 1rem;
-            border-radius: 8px;
-            background-color: #fee2e2;
-            color: #991b1b;
-            margin: 1rem 0;
-        }
-        
-        /* Selectbox styling */
-        .stSelectbox {
-            margin-bottom: 1rem;
-        }
-        
-        /* Radio button styling */
-        .stRadio > label {
-            background-color: #f8fafc;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
-        }
     </style>
 """, unsafe_allow_html=True)
 
-# Apply custom header
 st.markdown("""
     <div class="main-header">
         <h1>🎓 Interactive AI Tutor</h1>
@@ -135,7 +65,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def check_api_key():
-    """Verify the API key is properly configured."""
     if 'GOOGLE_API_KEY' not in st.secrets:
         st.error("🔑 GOOGLE_API_KEY not found in secrets!")
         st.info("""
@@ -285,11 +214,9 @@ class AITutor:
             return f"Error: {str(e)}"
 
 def main():
-    # Check API key first
     if not check_api_key():
         st.stop()
     
-    # Initialize session states
     if 'tutor' not in st.session_state:
         try:
             st.session_state.tutor = AITutor()
@@ -303,7 +230,6 @@ def main():
     if 'quiz_active' not in st.session_state:
         st.session_state.quiz_active = False
     
-    # Enhanced sidebar
     with st.sidebar:
         st.markdown("""
             <div style='text-align: center; padding-bottom: 1rem;'>
@@ -346,9 +272,14 @@ def main():
                     st.session_state.messages.append({"role": "assistant", "content": response})
                     st.session_state.quiz_active = False
                 st.success("✨ Session started successfully!")
-
+        
+        st.markdown("---")
+        if st.button("🔄 Reset Session"):
+            st.session_state.messages = []
+            st.session_state.quiz_active = False
+            st.session_state.tutor = AITutor()
+            st.rerun()
     
-    # Main content area with enhanced styling
     chat_col, viz_col = st.columns([2, 1])
     
     with chat_col:
@@ -437,7 +368,6 @@ def main():
                     st.session_state.quiz_active = False
                     st.success(f"🎉 Quiz completed! Score: {final_score}%")
         
-        # Enhanced progress visualization
         progress_data = st.session_state.tutor.progress_tracker.load_history()
         if progress_data:
             st.markdown("""
@@ -462,7 +392,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-        
