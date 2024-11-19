@@ -378,10 +378,8 @@ def main():
                             final_score
                         )
                         st.session_state.quiz_active = False
-                        st.success(f"🎉 Quiz completed! Score: {final_score}%
+                        st.success(f"🎉 Quiz completed! Score: {final_score}%)
 
-st.session_state.quiz_active = False
-                        st.success(f"🎉 Quiz completed! Score: {final_score}%")
 
         try:
             progress_data = st.session_state.tutor.progress_tracker.load_history()
