@@ -6,21 +6,7 @@ from datetime import datetime
 import json
 import os
 
-# Security check for API key
-if 'GOOGLE_API_KEY' not in st.secrets:
-    st.error('Error: GOOGLE_API_KEY not found in secrets.')
-    st.markdown("""
-        ### Configuration Required
-        1. Create `.streamlit/secrets.toml` from the example file
-        2. Add your Google Gemini API key to the secrets file
-        3. Restart the application
-    """)
-    st.stop()
-
-# Configure Gemini API
-genai.configure(api_key=st.secrets['GOOGLE_API_KEY'])
-
-# Configure page
+# Page configuration
 st.set_page_config(
     page_title="AI Tutor",
     page_icon="🎓",
@@ -28,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Add custom CSS for better UI
+# Custom CSS
 st.markdown("""
     <style>
     .stButton>button {
@@ -40,29 +26,57 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+def check_api_key():
+    """Verify the API key is properly configured."""
+    if 'GOOGLE_API_KEY' not in st.secrets:
+        st.error("🔑 GOOGLE_API_KEY not found in secrets!")
+        st.info("""
+        ### How to fix this:
+        1. Go to your Streamlit Cloud dashboard
+        2. Find this app and click on the three dots (...)
+        3. Select 'Settings'
+        4. Under 'Secrets', add your API key like this:
+        ```
+        GOOGLE_API_KEY = your-actual-key-here-without-quotes
+        ```
+        5. Click 'Save'
+        6. Restart the app
+        """)
+        return False
+    
+    try:
+        genai.configure(api_key=st.secrets['GOOGLE_API_KEY'])
+        model = genai.GenerativeModel('gemini-pro')
+        response = model.generate_content("Test")
+        return True
+    except Exception as e:
+        st.error(f"🚨 Error with API key: {str(e)}")
+        return False
+
 class QuizGenerator:
     def __init__(self, model):
         self.model = model
 
     def generate_quiz(self, subject, topic, difficulty, num_questions=5):
         prompt = f"""Generate a quiz about {topic} in {subject} at {difficulty} level.
-        Create {num_questions} questions in the following JSON format:
+        Create exactly {num_questions} questions in this JSON format:
         {{
             "questions": [
                 {{
-                    "question": "Question text",
-                    "options": ["A", "B", "C", "D"],
-                    "correct_answer": "Correct option",
-                    "explanation": "Explanation of the answer"
+                    "question": "Question text here",
+                    "options": ["A) First option", "B) Second option", "C) Third option", "D) Fourth option"],
+                    "correct_answer": "A) First option",
+                    "explanation": "Explanation of why this is correct"
                 }}
             ]
-        }}"""
+        }}
+        Make sure each question has exactly 4 options and the correct_answer matches one of the options exactly."""
         
-        response = self.model.generate_content(prompt)
         try:
+            response = self.model.generate_content(prompt)
             return json.loads(response.text)
-        except:
-            st.error("Failed to generate quiz. Please try again.")
+        except Exception as e:
+            st.error(f"Failed to generate quiz: {str(e)}")
             return None
 
 class ProgressTracker:
@@ -95,12 +109,16 @@ class ProgressTracker:
 
 class AITutor:
     def __init__(self):
-        self.model = genai.GenerativeModel('gemini-pro')
-        self.quiz_generator = QuizGenerator(self.model)
-        self.progress_tracker = ProgressTracker()
-        self.chat = None
-        self.current_subject = None
-        self.current_topic = None
+        try:
+            self.model = genai.GenerativeModel('gemini-pro')
+            self.quiz_generator = QuizGenerator(self.model)
+            self.progress_tracker = ProgressTracker()
+            self.chat = None
+            self.current_subject = None
+            self.current_topic = None
+        except Exception as e:
+            st.error(f"Error initializing AI Tutor: {str(e)}")
+            raise e
     
     def initialize_session(self, subject, level, prerequisites, topic):
         prompt = f"""Act as an expert tutor in {subject}. You are teaching a student at {level} who has {prerequisites}.
@@ -109,11 +127,17 @@ class AITutor:
         Teaching Style:
         - Use the Socratic method
         - Break down complex concepts
-        - Provide examples
+        - Provide concrete examples
         - Check understanding frequently
         - Adjust difficulty based on responses
+        - Use analogies to connect new concepts with familiar ones
         
-        Start by introducing the topic and asking an assessment question."""
+        Start by:
+        1. Briefly introducing yourself as an AI tutor
+        2. Explaining what we'll learn about {topic}
+        3. Asking a question to assess current knowledge
+        
+        Keep responses clear and engaging."""
         
         try:
             self.chat = self.model.start_chat(history=[])
@@ -136,9 +160,17 @@ class AITutor:
 def main():
     st.title("🎓 AI Tutor")
     
+    # Check API key first
+    if not check_api_key():
+        st.stop()
+    
     # Initialize session state
     if 'tutor' not in st.session_state:
-        st.session_state.tutor = AITutor()
+        try:
+            st.session_state.tutor = AITutor()
+        except Exception as e:
+            st.error(f"Failed to initialize tutor: {str(e)}")
+            st.stop()
     
     if 'messages' not in st.session_state:
         st.session_state.messages = []
@@ -154,7 +186,16 @@ def main():
         user_name = st.text_input("Your Name", key="user_name")
         
         # Subject selection
-        subjects = ["Python Programming", "Mathematics", "Physics", "Chemistry", "History"]
+        subjects = [
+            "Python Programming",
+            "Mathematics",
+            "Physics",
+            "Chemistry",
+            "Biology",
+            "History",
+            "Literature",
+            "Economics"
+        ]
         subject = st.selectbox("Subject", subjects)
         
         # Level selection
@@ -165,14 +206,13 @@ def main():
         topic = st.text_input("Specific Topic")
         
         # Prerequisites input
-        prerequisites = st.text_area("Prerequisites")
+        prerequisites = st.text_area("Your Background/Prerequisites")
         
-        start_session = st.button("Start New Session")
-        if start_session:
+        if st.button("Start New Session"):
             if not topic or not prerequisites:
                 st.error("Please fill in both Topic and Prerequisites")
             else:
-                with st.spinner("Initializing session..."):
+                with st.spinner("Initializing your tutoring session..."):
                     response = st.session_state.tutor.initialize_session(
                         subject, level, prerequisites, topic
                     )
@@ -203,17 +243,20 @@ def main():
         
         # Quiz button
         if st.button("Take Quiz"):
-            st.session_state.quiz_active = True
-            with st.spinner("Generating quiz..."):
-                quiz_data = st.session_state.tutor.quiz_generator.generate_quiz(
-                    subject,
-                    topic,
-                    level
-                )
-            if quiz_data:
-                st.session_state.current_quiz = quiz_data
-                st.session_state.quiz_score = 0
-                st.session_state.current_question = 0
+            if not topic:
+                st.error("Please start a session first")
+            else:
+                st.session_state.quiz_active = True
+                with st.spinner("Generating quiz..."):
+                    quiz_data = st.session_state.tutor.quiz_generator.generate_quiz(
+                        subject,
+                        topic,
+                        level
+                    )
+                if quiz_data:
+                    st.session_state.current_quiz = quiz_data
+                    st.session_state.quiz_score = 0
+                    st.session_state.current_question = 0
         
         # Display quiz if active
         if st.session_state.quiz_active and hasattr(st.session_state, 'current_quiz'):
@@ -227,9 +270,9 @@ def main():
             if st.button("Submit Answer"):
                 if answer == question['correct_answer']:
                     st.session_state.quiz_score += 1
-                    st.success("Correct!")
+                    st.success("✅ Correct!")
                 else:
-                    st.error(f"Incorrect. {question['explanation']}")
+                    st.error(f"❌ Incorrect. {question['explanation']}")
                 
                 if st.session_state.current_question < len(st.session_state.current_quiz['questions']) - 1:
                     st.session_state.current_question += 1
