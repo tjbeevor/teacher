@@ -37,7 +37,7 @@ def check_api_key():
         3. Select 'Settings'
         4. Under 'Secrets', add your API key like this:
         ```
-        GOOGLE_API_KEY = your-actual-key-here-without-quotes
+        GOOGLE_API_KEY = "your-actual-key-here-with-quotes"
         ```
         5. Click 'Save'
         6. Restart the app
@@ -58,19 +58,32 @@ class QuizGenerator:
         self.model = model
 
     def generate_quiz(self, subject, topic, difficulty, num_questions=5):
-        prompt = f"""Generate a quiz about {topic} in {subject} at {difficulty} level.
-        Create exactly {num_questions} questions in this JSON format:
+        prompt = f"""Create a quiz about {topic} in {subject} at {difficulty} level.
+        Generate exactly {num_questions} questions based on what we've discussed.
+        
+        Format each question like this:
         {{
             "questions": [
                 {{
-                    "question": "Question text here",
-                    "options": ["A) First option", "B) Second option", "C) Third option", "D) Fourth option"],
+                    "question": "Write a clear, focused question about a single concept",
+                    "options": [
+                        "A) First option",
+                        "B) Second option",
+                        "C) Third option",
+                        "D) Fourth option"
+                    ],
                     "correct_answer": "A) First option",
-                    "explanation": "Explanation of why this is correct"
+                    "explanation": "Brief explanation of why this answer is correct"
                 }}
             ]
         }}
-        Make sure each question has exactly 4 options and the correct_answer matches one of the options exactly."""
+        
+        Guidelines:
+        - Each question should test understanding of a specific concept
+        - Make options clear and distinct
+        - Include only one correct answer
+        - Keep explanations concise and helpful
+        - Ensure the correct_answer exactly matches one of the options"""
         
         try:
             response = self.model.generate_content(prompt)
@@ -121,23 +134,29 @@ class AITutor:
             raise e
     
     def initialize_session(self, subject, level, prerequisites, topic):
-        prompt = f"""Act as an expert tutor in {subject}. You are teaching a student at {level} who has {prerequisites}.
+        prompt = f"""You are an expert tutor in {subject}, teaching a student at {level} level who has {prerequisites} as background.
         Current topic: {topic}
         
-        Teaching Style:
-        - Use the Socratic method
-        - Break down complex concepts
-        - Provide concrete examples
-        - Check understanding frequently
-        - Adjust difficulty based on responses
-        - Use analogies to connect new concepts with familiar ones
+        Follow this structured approach:
+        1. Start with a brief, friendly introduction
+        2. Present a clear outline of what we'll cover about {topic}
+        3. Begin teaching the first concept, using:
+           - Clear explanations
+           - Relevant examples
+           - Real-world applications
+           - Simple analogies when helpful
+        4. After explaining each concept, ask ONE simple question to check understanding
+        5. Wait for the student's response before moving forward
         
-        Start by:
-        1. Briefly introducing yourself as an AI tutor
-        2. Explaining what we'll learn about {topic}
-        3. Asking a question to assess current knowledge
+        Teaching guidelines:
+        - Break complex ideas into smaller chunks
+        - Use conversational, engaging language
+        - Don't present multiple questions at once
+        - Don't provide answers immediately
+        - Focus on one concept at a time
+        - Let the student think and respond
         
-        Keep responses clear and engaging."""
+        Start now with your introduction and the first concept about {topic}."""
         
         try:
             self.chat = self.model.start_chat(history=[])
@@ -152,7 +171,20 @@ class AITutor:
         if not self.chat:
             return "Please start a new session first."
         try:
-            response = self.chat.send_message(message)
+            follow_up_prompt = f"""
+            Respond to the student's input, then:
+            1. Provide helpful feedback on their response
+            2. Clarify any misconceptions if needed
+            3. Present the next relevant concept
+            4. Ask ONE question to check understanding
+            
+            Remember:
+            - Stay focused on one concept at a time
+            - Don't provide multiple questions
+            - Let the student think and respond
+            - Keep the conversation natural and engaging
+            """
+            response = self.chat.send_message(message + "\n\n" + follow_up_prompt)
             return response.text
         except Exception as e:
             return f"Error: {str(e)}"
