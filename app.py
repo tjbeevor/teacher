@@ -199,45 +199,46 @@ class AITutor:
             return f"Error initializing session: {str(e)}"
 
     def send_message(self, message):
-    if not self.chat:
-        return "Please start a new session first."
-    try:
-        follow_up_prompt = f"""
-        The student's response was: "{message}"
+        if not self.chat:
+            return "Please start a new session first."
+        try:
+            follow_up_prompt = f"""
+            The student's response was: "{message}"
         
-        Structure your response in these parts:
+            Structure your response in these parts:
 
-        1. First, acknowledge their answer directly with encouragement
+            1. First, acknowledge their answer directly with encouragement
         
-        2. Provide specific feedback:
-           - If correct: Confirm and briefly elaborate
-           - If partially correct: Clarify any misunderstandings
-           - If incorrect: Gently explain why
+            2. Provide specific feedback:
+               - If correct: Confirm and briefly elaborate
+               - If partially correct: Clarify any misunderstandings
+               - If incorrect: Gently explain why
         
-        3. Teach the next concept in detail:
-           - Start with a clear introduction of the concept
-           - Provide a thorough explanation with multiple examples
-           - Include real-world applications
-           - Use analogies to connect with familiar concepts
-           - Show variations or special cases
-           - Highlight common pitfalls or misconceptions
-           - Give practical tips
+            3. Teach the next concept in detail:
+               - Start with a clear introduction of the concept
+               - Provide a thorough explanation with multiple examples
+               - Include real-world applications
+               - Use analogies to connect with familiar concepts
+               - Show variations or special cases
+               - Highlight common pitfalls or misconceptions
+               - Give practical tips
         
-        4. End with a thought-provoking question about what you just taught.
+            4. End with a thought-provoking question about what you just taught.
         
-        Keep your response:
-        - Natural and conversational
-        - Well-organized but without visible section markers
-        - Rich in examples and explanations
-        - Clear and engaging
+            Keep your response:
+            - Natural and conversational
+            - Well-organized but without visible section markers
+            - Rich in examples and explanations
+            - Clear and engaging
         
-        Remember to make part 3 (teaching the next concept) particularly comprehensive 
-        with detailed explanations and multiple examples."""
+            Remember to make part 3 (teaching the next concept) particularly comprehensive 
+            with detailed explanations and multiple examples."""
         
-        response = self.chat.send_message(follow_up_prompt)
-        return response.text
+            response = self.chat.send_message(follow_up_prompt)
+            return response.text
     except Exception as e:
-        return f"Error: {str(e)}"
+            return f"Error: {str(e)}"
+
 def main():
     if not check_api_key():
         st.stop()
