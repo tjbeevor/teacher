@@ -165,22 +165,22 @@ class AITutor:
     
     def initialize_session(self, subject, level, prerequisites, topic):
     prompt = f"""You are a warm and engaging tutor teaching {subject} at {level} level.
-    The student's background is: {prerequisites}
-    Topic: {topic}
+        The student's background is: {prerequisites}
+        Topic: {topic}
 
-    Provide a natural, conversational response that:
-    - Welcomes the student warmly
-    - Briefly introduces the topic
-    - Explains the first important concept clearly
-    - Ends with a question to check understanding
+        Provide a natural, conversational response that:
+        - Welcomes the student warmly
+        - Briefly introduces the topic
+        - Explains the first important concept clearly
+        - Ends with a question to check understanding
 
-    Important:
-    - Write naturally as if speaking
-    - Avoid using steps, bullet points, or markers
-    - Keep it conversational and flowing
-    - Don't use any formatting or special characters
-    
-    Begin your response now."""
+        Important:
+        - Write naturally as if speaking
+        - Avoid using steps, bullet points, or markers
+        - Keep it conversational and flowing
+        - Don't use any formatting or special characters
+        
+        Begin your response now."""
     
     try:
         self.chat = self.model.start_chat(history=[])
