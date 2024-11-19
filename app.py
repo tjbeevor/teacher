@@ -76,14 +76,7 @@ class QuizGenerator:
                     "explanation": "Brief explanation of why this answer is correct"
                 }}
             ]
-        }}
-        
-        Guidelines:
-        - Each question should test understanding of a specific concept
-        - Make options clear and distinct
-        - Include only one correct answer
-        - Keep explanations concise and helpful
-        - Ensure the correct_answer exactly matches one of the options"""
+        }}"""
         
         try:
             response = self.model.generate_content(prompt)
@@ -134,35 +127,30 @@ class AITutor:
             raise e
     
     def initialize_session(self, subject, level, prerequisites, topic):
-        prompt = f"""You are an expert tutor in {subject}, teaching a student at {level} level who has {prerequisites} as background.
+        prompt = f"""You are a helpful and encouraging tutor teaching {subject} at {level} level.
+        The student's background is: {prerequisites}
         Current topic: {topic}
-        
-        Teaching Guidelines:
-        1. Start with a friendly introduction (2-3 sentences)
-        2. Present a brief outline of the topic
-        3. Begin with the first concept:
-           - Explain it clearly
-           - Use an example
-           - Provide a real-world analogy
-        4. Ask a simple question about the concept
-        
-        Important:
-        - Keep it conversational
-        - No bullet points or section markers
-        - Write naturally as if speaking
+
+        Begin by:
+        1. Warmly welcome the student
+        2. Very briefly introduce the topic
+        3. Start teaching the first key concept
+        4. Ask one simple question to check understanding
+
+        Keep your responses:
+        - Natural and conversational
+        - Clear and focused
         - One concept at a time
-        - Wait for student response
+        - Without any special formatting
         
-        Begin your introduction and first concept now.
-        """
+        Start the lesson now."""
         
         try:
             self.chat = self.model.start_chat(history=[])
             self.current_subject = subject
             self.current_topic = topic
             response = self.chat.send_message(prompt)
-            cleaned_response = response.text.replace("**", "").replace("*", "")
-            return cleaned_response
+            return response.text
         except Exception as e:
             return f"Error initializing session: {str(e)}"
     
@@ -170,36 +158,30 @@ class AITutor:
         if not self.chat:
             return "Please start a new session first."
         try:
-            follow_up_prompt = """
-            Based on the student's response:
-            1. Acknowledge their answer
-            2. Provide specific feedback
-            3. If the answer was:
-               - Correct: Praise them and move to the next concept
-               - Partially correct: Clarify any misunderstandings, then move on
-               - Incorrect: Explain why gently, provide the correct understanding
-            4. Then present the next concept clearly and concisely
-            5. End with a new question about the concept just presented
+            follow_up_prompt = f"""
+            The student's response was: "{message}"
             
-            Keep your response natural and encouraging.
-            Avoid using markers like **Topic** or **Question**.
-            Present information in a conversational way.
-            """
+            1. First, acknowledge their answer directly
+            2. Provide specific feedback:
+               - If correct: Confirm and briefly elaborate
+               - If partially correct: Clarify any misunderstandings
+               - If incorrect: Gently explain why
+            3. Then: Teach the next concept
+            4. End with a new question about what you just taught
             
-            response = self.chat.send_message(message + "\n\n" + follow_up_prompt)
-            cleaned_response = response.text.replace("**", "").replace("*", "")
-            return cleaned_response
+            Keep it natural and conversational. No special formatting."""
+            
+            response = self.chat.send_message(follow_up_prompt)
+            return response.text
         except Exception as e:
             return f"Error: {str(e)}"
 
 def main():
     st.title("🎓 AI Tutor")
     
-    # Check API key first
     if not check_api_key():
         st.stop()
     
-    # Initialize session state
     if 'tutor' not in st.session_state:
         try:
             st.session_state.tutor = AITutor()
@@ -213,14 +195,11 @@ def main():
     if 'quiz_active' not in st.session_state:
         st.session_state.quiz_active = False
     
-    # Sidebar for session configuration
     with st.sidebar:
         st.header("Session Settings")
         
-        # User information
         user_name = st.text_input("Your Name", key="user_name")
         
-        # Subject selection
         subjects = [
             "Python Programming",
             "Mathematics",
@@ -233,21 +212,18 @@ def main():
         ]
         subject = st.selectbox("Subject", subjects)
         
-        # Level selection
         levels = ["Beginner", "Intermediate", "Advanced"]
         level = st.selectbox("Level", levels)
         
-        # Topic input
         topic = st.text_input("Specific Topic")
         
-        # Prerequisites input
         prerequisites = st.text_area("Your Background/Prerequisites")
         
         if st.button("Start New Session"):
             if not topic or not prerequisites:
                 st.error("Please fill in both Topic and Prerequisites")
             else:
-                with st.spinner("Initializing your tutoring session..."):
+                with st.spinner("Starting your tutoring session..."):
                     response = st.session_state.tutor.initialize_session(
                         subject, level, prerequisites, topic
                     )
@@ -256,27 +232,34 @@ def main():
                     st.session_state.quiz_active = False
                 st.success("Session started!")
     
-    # Main chat interface
     chat_col, viz_col = st.columns([2, 1])
     
     with chat_col:
-        # Display chat messages
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.write(message["content"])
+        message_container = st.container()
         
-        # Chat input
+        with message_container:
+            for message in st.session_state.messages:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+        
         if prompt := st.chat_input("Type your response here..."):
-            if not st.session_state.quiz_active:
-                st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
+            
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            
+            with st.chat_message("assistant"):
                 with st.spinner("Thinking..."):
                     response = st.session_state.tutor.send_message(prompt)
-                st.session_state.messages.append({"role": "assistant", "content": response})
+                    st.markdown(response)
+            
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            
+            st.rerun()
     
     with viz_col:
         st.header("Learning Progress")
         
-        # Quiz button
         if st.button("Take Quiz"):
             if not topic:
                 st.error("Please start a session first")
@@ -293,7 +276,6 @@ def main():
                     st.session_state.quiz_score = 0
                     st.session_state.current_question = 0
         
-        # Display quiz if active
         if st.session_state.quiz_active and hasattr(st.session_state, 'current_quiz'):
             question = st.session_state.current_quiz['questions'][st.session_state.current_question]
             
@@ -322,7 +304,6 @@ def main():
                     st.session_state.quiz_active = False
                     st.success(f"Quiz completed! Score: {final_score}%")
         
-        # Display progress graph
         progress_data = st.session_state.tutor.progress_tracker.load_history()
         if progress_data:
             df = pd.DataFrame(progress_data)
