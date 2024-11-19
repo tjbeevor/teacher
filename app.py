@@ -6,7 +6,6 @@ from datetime import datetime
 import json
 import os
 from functools import lru_cache
-import redis
 from concurrent.futures import ThreadPoolExecutor
 
 # Configuration
