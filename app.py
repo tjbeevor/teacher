@@ -158,6 +158,7 @@ class ProgressTracker:
         except Exception as e:
             st.warning(f"Could not save progress: {e}")
 
+
 class AITutor:
     def __init__(self):
         try:
@@ -233,10 +234,10 @@ class AITutor:
         
             Remember to make part 3 (teaching the next concept) particularly comprehensive 
             with detailed explanations and multiple examples."""
-        
+    
             response = self.chat.send_message(follow_up_prompt)
             return response.text
-    except Exception as e:
+        except Exception as e:
             return f"Error: {str(e)}"
 
 def main():
