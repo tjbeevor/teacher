@@ -388,24 +388,30 @@ async def main():
             st.rerun()
 
     # Main content area
-    chat_col, viz_col = st.columns([2, 1])
+   chat_col, viz_col = st.columns([2, 1])
     
     with chat_col:
-        st.markdown("""
+        st.markdown(
+            """
             <div class='chat-container'>
                 <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>💬 Learning Conversation</h3>
             </div>
-        """, unsafe_allow_html=True
+            """,
+            unsafe_allow_html=True
+        )
         
         display_chat_messages()
         await handle_chat_input(st.session_state.tutor)
     
     with viz_col:
-        st.markdown("""
+        st.markdown(
+            """
             <div class='chat-container'>
                 <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>📈 Learning Progress</h3>
             </div>
-        """, unsafe_allow_html=True)
+            """,
+            unsafe_allow_html=True
+        )
         
         if st.button("📝 Take Quiz"):
             if not topic:
