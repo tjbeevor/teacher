@@ -5,18 +5,16 @@ import plotly.express as px
 from datetime import datetime
 import json
 import os
-import streamlit.bootstrap.global_state.bootstrap_state as bootstrap_state
 
-# Disable watchdog warning
-bootstrap_state.BOOTSTRAP_SETTINGS["global.disableWatchdogWarning"] = True
+# Disable file watcher
+os.environ["STREAMLIT_SERVER_WATCH_PATCHING"] = "false"
 
 # Page configuration
 st.set_page_config(
     page_title="AI Tutor | Interactive Learning",
     page_icon="🎓",
     layout="wide",
-    initial_sidebar_state="expanded",
-    server_mode=True
+    initial_sidebar_state="expanded"
 )
 
 # Custom CSS
