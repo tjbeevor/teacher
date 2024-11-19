@@ -5,6 +5,10 @@ import plotly.express as px
 from datetime import datetime
 import json
 import os
+import asyncio
+import concurrent.futures
+from functools import lru_cache
+from typing import List, Dict, Optional
 
 os.environ["STREAMLIT_SERVER_WATCH_PATCHING"] = "false"
 
@@ -16,6 +20,7 @@ st.set_page_config(
     menu_items={"Get help": None, "Report a bug": None, "About": None}
 )
 
+# Apply the same CSS styling as before
 st.markdown("""
     <style>
         .main {background-color: #f8f9fa;}
@@ -74,6 +79,196 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
+class CacheManager:
+    def __init__(self):
+        self.message_cache = {}
+        self.session_cache = {}
+    
+    @lru_cache(maxsize=100)
+    def get_cached_response(self, message_hash: str) -> Optional[str]:
+        return self.message_cache.get(message_hash)
+    
+    def cache_response(self, message_hash: str, response: str):
+        self.message_cache[message_hash] = response
+        
+    def get_session_data(self, session_id: str) -> Optional[Dict]:
+        return self.session_cache.get(session_id)
+    
+    def cache_session(self, session_id: str, data: Dict):
+        self.session_cache[session_id] = data
+
+class QuizGenerator:
+    def __init__(self, model):
+        self.model = model
+        self.cache_manager = CacheManager()
+
+    @lru_cache(maxsize=50)
+    def generate_quiz(self, subject, topic, difficulty, num_questions=5):
+        cache_key = f"{subject}_{topic}_{difficulty}"
+        cached_quiz = self.cache_manager.get_session_data(cache_key)
+        if cached_quiz:
+            return cached_quiz
+
+        prompt = f"""Create a quiz about {topic} in {subject} at {difficulty} level.
+        Generate exactly {num_questions} questions based on what we've discussed.
+        
+        Format each question like this:
+        {{
+            "questions": [
+                {{
+                    "question": "Write a clear, focused question about a single concept",
+                    "options": [
+                        "A) First option",
+                        "B) Second option",
+                        "C) Third option",
+                        "D) Fourth option"
+                    ],
+                    "correct_answer": "A) First option",
+                    "explanation": "Brief explanation of why this answer is correct"
+                }}
+            ]
+        }}"""
+        try:
+            response = self.model.generate_content(prompt)
+            quiz_data = json.loads(response.text)
+            self.cache_manager.cache_session(cache_key, quiz_data)
+            return quiz_data
+        except Exception as e:
+            st.error(f"Failed to generate quiz: {str(e)}")
+            return None
+
+class ProgressTracker:
+    def __init__(self):
+        self.history_file = "progress_history.json"
+        self.cache = {}
+    
+    def load_history(self):
+        if self.cache:
+            return self.cache
+        
+        try:
+            if os.path.exists(self.history_file):
+                with open(self.history_file, 'r') as f:
+                    self.cache = json.load(f)
+                    return self.cache
+        except Exception as e:
+            st.warning(f"Could not load progress history: {e}")
+        return []
+    
+    def save_progress(self, user, subject, topic, quiz_score, timestamp=None):
+        try:
+            history = self.load_history()
+            new_entry = {
+                'user': user,
+                'subject': subject,
+                'topic': topic,
+                'score': quiz_score,
+                'timestamp': timestamp or datetime.now().isoformat()
+            }
+            history.append(new_entry)
+            self.cache = history
+            
+            with open(self.history_file, 'w') as f:
+                json.dump(history, f)
+        except Exception as e:
+            st.warning(f"Could not save progress: {e}")
+
+class OptimizedAITutor:
+    def __init__(self):
+        self.model = genai.GenerativeModel('gemini-pro')
+        self.cache_manager = CacheManager()
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+        self.quiz_generator = QuizGenerator(self.model)
+        self.progress_tracker = ProgressTracker()
+        self._initialize_chat_history()
+
+    def _initialize_chat_history(self):
+        if 'chat_history' not in st.session_state:
+            st.session_state.chat_history = []
+
+    def _hash_message(self, message: str, context: str) -> str:
+        return f"{hash(message)}_{hash(context)}"
+
+    async def _generate_response(self, message: str, context: str) -> str:
+        message_hash = self._hash_message(message, context)
+        
+        cached_response = self.cache_manager.get_cached_response(message_hash)
+        if cached_response:
+            return cached_response
+        
+        try:
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                self.executor,
+                lambda: self.model.generate_content(self._create_prompt(message, context)).text
+            )
+            
+            self.cache_manager.cache_response(message_hash, response)
+            return response
+        except Exception as e:
+            st.error(f"Error generating response: {str(e)}")
+            return "I apologize, but I encountered an error. Please try again."
+
+    def _create_prompt(self, message: str, context: str) -> str:
+        return f"""Context: {context}
+        Student message: {message}
+        
+        Respond naturally and concisely while:
+        1. Acknowledging their response
+        2. Providing specific feedback
+        3. Teaching the next concept
+        4. Ending with a question"""
+
+    def initialize_session(self, subject: str, level: str, prerequisites: str, topic: str) -> str:
+        session_id = f"{subject}_{level}_{topic}"
+        cached_session = self.cache_manager.get_session_data(session_id)
+        
+        if cached_session:
+            return cached_session['initial_response']
+        
+        try:
+            prompt = f"""You are a tutor teaching {subject} at {level} level.
+            Background: {prerequisites}
+            Topic: {topic}
+            
+            Provide a concise welcome and introduction."""
+            
+            response = self.model.generate_content(prompt).text
+            
+            self.cache_manager.cache_session(session_id, {
+                'initial_response': response,
+                'context': f"{subject} {level} {topic}"
+            })
+            
+            return response
+        except Exception as e:
+            return f"Session initialization error: {str(e)}"
+
+    async def process_message(self, message: str) -> str:
+        if not hasattr(st.session_state, 'chat_history'):
+            return "Please start a new session first."
+        
+        recent_context = self._get_recent_context(st.session_state.chat_history)
+        response = await self._generate_response(message, recent_context)
+        self._update_chat_history(message, response)
+        return response
+
+    def _get_recent_context(self, history: List[Dict], context_window: int = 3) -> str:
+        recent_messages = history[-context_window:] if history else []
+        return " ".join([msg['content'] for msg in recent_messages])
+
+    def _update_chat_history(self, message: str, response: str):
+        st.session_state.chat_history.append({
+            'role': 'user',
+            'content': message,
+            'timestamp': datetime.now().isoformat()
+        })
+        st.session_state.chat_history.append({
+            'role': 'assistant',
+            'content': response,
+            'timestamp': datetime.now().isoformat()
+        })
+
 def check_api_key():
     if 'GOOGLE_API_KEY' not in st.secrets:
         st.error("🔑 GOOGLE_API_KEY not found in secrets!")
@@ -99,154 +294,38 @@ def check_api_key():
         st.error(f"🚨 Error with API key: {str(e)}")
         return False
 
-class QuizGenerator:
-    def __init__(self, model):
-        self.model = model
-
-    def generate_quiz(self, subject, topic, difficulty, num_questions=5):
-        prompt = f"""Create a quiz about {topic} in {subject} at {difficulty} level.
-        Generate exactly {num_questions} questions based on what we've discussed.
-        
-        Format each question like this:
-        {{
-            "questions": [
-                {{
-                    "question": "Write a clear, focused question about a single concept",
-                    "options": [
-                        "A) First option",
-                        "B) Second option",
-                        "C) Third option",
-                        "D) Fourth option"
-                    ],
-                    "correct_answer": "A) First option",
-                    "explanation": "Brief explanation of why this answer is correct"
-                }}
-            ]
-        }}"""
-        try:
-            response = self.model.generate_content(prompt)
-            return json.loads(response.text)
-        except Exception as e:
-            st.error(f"Failed to generate quiz: {str(e)}")
-            return None
-
-class ProgressTracker:
-    def __init__(self):
-        self.history_file = "progress_history.json"
+def display_chat_messages():
+    message_container = st.container()
     
-    def load_history(self):
-        try:
-            if os.path.exists(self.history_file):
-                with open(self.history_file, 'r') as f:
-                    return json.load(f)
-        except Exception as e:
-            st.warning(f"Could not load progress history: {e}")
-        return []
-    
-    def save_progress(self, user, subject, topic, quiz_score, timestamp=None):
-        try:
-            history = self.load_history()
-            history.append({
-                'user': user,
-                'subject': subject,
-                'topic': topic,
-                'score': quiz_score,
-                'timestamp': timestamp or datetime.now().isoformat()
-            })
-            with open(self.history_file, 'w') as f:
-                json.dump(history, f)
-        except Exception as e:
-            st.warning(f"Could not save progress: {e}")
-
-
-class AITutor:
-    def __init__(self):
-        try:
-            self.model = genai.GenerativeModel('gemini-pro')
-            self.quiz_generator = QuizGenerator(self.model)
-            self.progress_tracker = ProgressTracker()
-            self.chat = None
-            self.current_subject = None
-            self.current_topic = None
-        except Exception as e:
-            st.error(f"Error initializing AI Tutor: {str(e)}")
-            raise e
-
-    def initialize_session(self, subject, level, prerequisites, topic):
-        prompt = f"""You are a helpful and encouraging tutor teaching {subject} at {level} level.
-        The student's background is: {prerequisites}
-        Current topic: {topic}
-
-        Begin by:
-        1. Warmly welcome the student
-        2. Very briefly introduce the topic
-        3. Start teaching the first key concept
-        4. Ask one simple question to check understanding
-
-        Keep your responses:
-        - Natural and conversational
-        - Clear and focused
-        - One concept at a time
-        - Without any special formatting
+    with message_container:
+        messages_to_display = st.session_state.messages[-10:] if len(st.session_state.messages) > 10 else st.session_state.messages
         
-        Start the lesson now."""
-        try:
-            self.chat = self.model.start_chat(history=[])
-            self.current_subject = subject
-            self.current_topic = topic
-            response = self.chat.send_message(prompt)
-            return response.text
-        except Exception as e:
-            return f"Error initializing session: {str(e)}"
+        for message in messages_to_display:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
 
-    def send_message(self, message):
-        if not self.chat:
-            return "Please start a new session first."
-        try:
-            follow_up_prompt = f"""
-            The student's response was: "{message}"
+async def handle_chat_input(tutor: OptimizedAITutor):
+    if prompt := st.chat_input("💭 Type your response here..."):
+        with st.chat_message("user"):
+            st.markdown(prompt)
         
-            Structure your response in these parts:
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        
+        with st.chat_message("assistant"):
+            with st.spinner("🤔 Thinking..."):
+                response = await tutor.process_message(prompt)
+                st.markdown(response)
+        
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        st.rerun()
 
-            1. First, acknowledge their answer directly with encouragement
-        
-            2. Provide specific feedback:
-               - If correct: Confirm and briefly elaborate
-               - If partially correct: Clarify any misunderstandings
-               - If incorrect: Gently explain why
-        
-            3. Teach the next concept in detail:
-               - Start with a clear introduction of the concept
-               - Provide a thorough explanation with multiple examples
-               - Include real-world applications
-               - Use analogies to connect with familiar concepts
-               - Show variations or special cases
-               - Highlight common pitfalls or misconceptions
-               - Give practical tips
-        
-            4. End with a thought-provoking question about what you just taught.
-        
-            Keep your response:
-            - Natural and conversational
-            - Well-organized but without visible section markers
-            - Rich in examples and explanations
-            - Clear and engaging
-        
-            Remember to make part 3 (teaching the next concept) particularly comprehensive 
-            with detailed explanations and multiple examples."""
-    
-            response = self.chat.send_message(follow_up_prompt)
-            return response.text
-        except Exception as e:
-            return f"Error: {str(e)}"
-
-def main():
+async def main():
     if not check_api_key():
         st.stop()
     
     if 'tutor' not in st.session_state:
         try:
-            st.session_state.tutor = AITutor()
+            st.session_state.tutor = OptimizedAITutor()
         except Exception as e:
             st.error(f"Failed to initialize tutor: {str(e)}")
             st.stop()
@@ -256,7 +335,8 @@ def main():
     
     if 'quiz_active' not in st.session_state:
         st.session_state.quiz_active = False
-    
+
+    # Sidebar configuration
     with st.sidebar:
         st.markdown("""
             <div style='text-align: center; padding-bottom: 1rem;'>
@@ -304,9 +384,10 @@ def main():
         if st.button("🔄 Reset Session"):
             st.session_state.messages = []
             st.session_state.quiz_active = False
-            st.session_state.tutor = AITutor()
+            st.session_state.tutor = OptimizedAITutor()
             st.rerun()
 
+    # Main content area
     chat_col, viz_col = st.columns([2, 1])
     
     with chat_col:
@@ -314,29 +395,10 @@ def main():
             <div class='chat-container'>
                 <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>💬 Learning Conversation</h3>
             </div>
-        """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True
         
-        message_container = st.container()
-        
-        with message_container:
-            for message in st.session_state.messages:
-                with st.chat_message(message["role"]):
-                    st.markdown(message["content"])
-        
-        if prompt := st.chat_input("💭 Type your response here..."):
-            with st.chat_message("user"):
-                st.markdown(prompt)
-            
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            
-            with st.chat_message("assistant"):
-                with st.spinner("🤔 Thinking..."):
-                    response = st.session_state.tutor.send_message(prompt)
-                    st.markdown(response)
-            
-            st.session_state.messages.append({"role": "assistant", "content": response})
-            
-            st.rerun()
+        display_chat_messages()
+        await handle_chat_input(st.session_state.tutor)
     
     with viz_col:
         st.markdown("""
@@ -389,21 +451,44 @@ def main():
                     st.session_state.quiz_active = False
                     st.success(f"🎉 Quiz completed! Score: {final_score}%")
         
+        # Efficient progress visualization with caching
+        @st.cache_data(ttl=300)  # Cache for 5 minutes
+        def get_progress_chart(progress_data):
+            if progress_data:
+                df = pd.DataFrame(progress_data)
+                fig = px.line(df, x='timestamp', y='score', color='subject',
+                             title='Performance Over Time',
+                             template='seaborn')
+                fig.update_layout(
+                    plot_bgcolor='white',
+                    paper_bgcolor='white',
+                    font={'color': '#1E3A8A'},
+                    title={'font': {'size': 20}},
+                    xaxis={'gridcolor': '#E2E8F0'},
+                    yaxis={'gridcolor': '#E2E8F0'}
+                )
+                return fig
+            return None
+
         progress_data = st.session_state.tutor.progress_tracker.load_history()
         if progress_data:
-            df = pd.DataFrame(progress_data)
-            fig = px.line(df, x='timestamp', y='score', color='subject',
-                         title='Performance Over Time',
-                         template='seaborn')
-            fig.update_layout(
-                plot_bgcolor='white',
-                paper_bgcolor='white',
-                font={'color': '#1E3A8A'},
-                title={'font': {'size': 20}},
-                xaxis={'gridcolor': '#E2E8F0'},
-                yaxis={'gridcolor': '#E2E8F0'}
-            )
-            st.plotly_chart(fig, use_container_width=True)
+            chart = get_progress_chart(progress_data)
+            if chart:
+                st.plotly_chart(chart, use_container_width=True)
+
+async def run_app():
+    """Wrapper function to run the async main function"""
+    try:
+        await main()
+    except Exception as e:
+        st.error(f"Application error: {str(e)}")
 
 if __name__ == "__main__":
-    main()
+    # Set up asyncio event loop and run the application
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(run_app())
+    finally:
+        loop.close()
+                    
