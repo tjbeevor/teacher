@@ -6,10 +6,8 @@ from datetime import datetime
 import json
 import os
 
-# Disable file watcher
 os.environ["STREAMLIT_SERVER_WATCH_PATCHING"] = "false"
 
-# Page configuration
 st.set_page_config(
     page_title="AI Tutor | Interactive Learning",
     page_icon="🎓",
@@ -17,12 +15,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
 st.markdown("""
     <style>
-        .main {
-            background-color: #f8f9fa;
-        }
+        .main {background-color: #f8f9fa;}
         .main-header {
             font-family: 'Helvetica Neue', sans-serif;
             color: #1E3A8A;
@@ -32,11 +27,6 @@ st.markdown("""
             border-radius: 10px;
             margin-bottom: 2rem;
         }
-        .css-1d391kg {
-            background-color: #f1f5f9;
-            padding: 2rem 1rem;
-            border-right: 1px solid #e2e8f0;
-        }
         .stButton>button {
             width: 100%;
             border-radius: 8px;
@@ -45,10 +35,6 @@ st.markdown("""
             font-weight: 500;
             padding: 0.5rem 1rem;
             transition: all 0.3s ease;
-        }
-        .stButton>button:hover {
-            background-color: #2563EB;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
         .chat-container {
             background-color: white;
@@ -83,7 +69,6 @@ def check_api_key():
         6. Restart the app
         """)
         return False
-    
     try:
         genai.configure(api_key=st.secrets['GOOGLE_API_KEY'])
         model = genai.GenerativeModel('gemini-pro')
@@ -117,7 +102,6 @@ class QuizGenerator:
                 }}
             ]
         }}"""
-        
         try:
             response = self.model.generate_content(prompt)
             return json.loads(response.text)
@@ -165,61 +149,48 @@ class AITutor:
         except Exception as e:
             st.error(f"Error initializing AI Tutor: {str(e)}")
             raise e
-    
+
     def initialize_session(self, subject, level, prerequisites, topic):
-    prompt = f"""You are a warm and engaging tutor teaching {subject} at {level} level.
-        The student's background is: {prerequisites}
+        prompt = f"""You are a helpful tutor teaching {subject} at {level} level.
+        Background: {prerequisites}
         Topic: {topic}
 
-        Provide a natural, conversational response that:
-        - Welcomes the student warmly
-        - Briefly introduces the topic
-        - Explains the first important concept clearly
-        - Ends with a question to check understanding
+        Begin by:
+        1. Warmly welcome the student
+        2. Briefly introduce the topic
+        3. Start teaching the first key concept
+        4. Ask one simple question
 
-        Important:
-        - Write naturally as if speaking
-        - Avoid using steps, bullet points, or markers
-        - Keep it conversational and flowing
-        - Don't use any formatting or special characters
+        Keep it conversational and natural."""
         
-        Begin your response now."""
-    
-    try:
-        self.chat = self.model.start_chat(history=[])
-        self.current_subject = subject
-        self.current_topic = topic
-        response = self.chat.send_message(prompt)
-        return response.text
-    except Exception as e:
-        return f"Error initializing session: {str(e)}"    
+        try:
+            self.chat = self.model.start_chat(history=[])
+            self.current_subject = subject
+            self.current_topic = topic
+            response = self.chat.send_message(prompt)
+            return response.text
+        except Exception as e:
+            return f"Error initializing session: {str(e)}"
+
     def send_message(self, message):
-    if not self.chat:
-        return "Please start a new session first."
-    try:
-        follow_up_prompt = f"""
-        Respond naturally to the student's answer: "{message}"
-        
-        In your response:
-        - Acknowledge what they said
-        - Give specific, helpful feedback
-        - Explain the next relevant concept
-        - Ask a question about what you just taught
-        
-        Important:
-        - Write conversationally, as if speaking
-        - Don't use steps, markers, or special formatting
-        - Keep everything natural and flowing
-        - Avoid using words like "Step" or "Next"
-        - Don't use asterisks or other special characters
-        
-        Respond in a natural, flowing paragraph style."""
-        
-        response = self.chat.send_message(follow_up_prompt)
-        return response.text
-    except Exception as e:
-        return f"Error: {str(e)}"
-        
+        if not self.chat:
+            return "Please start a new session first."
+        try:
+            follow_up_prompt = f"""
+            Based on the student's response: "{message}"
+            
+            1. Acknowledge their answer
+            2. Provide specific feedback
+            3. Teach the next concept
+            4. Ask a new question
+            
+            Keep it natural and conversational."""
+            
+            response = self.chat.send_message(follow_up_prompt)
+            return response.text
+        except Exception as e:
+            return f"Error: {str(e)}"
+
 def main():
     if not check_api_key():
         st.stop()
@@ -271,14 +242,14 @@ def main():
             if not topic or not prerequisites:
                 st.error("⚠️ Please fill in both Topic and Prerequisites")
             else:
-                with st.spinner("🔄 Initializing your personalized session..."):
+                with st.spinner("🔄 Initializing your session..."):
                     response = st.session_state.tutor.initialize_session(
                         subject, level, prerequisites, topic
                     )
                     st.session_state.messages = []
                     st.session_state.messages.append({"role": "assistant", "content": response})
                     st.session_state.quiz_active = False
-                st.success("✨ Session started successfully!")
+                st.success("✨ Session started!")
         
         st.markdown("---")
         if st.button("🔄 Reset Session"):
@@ -291,7 +262,7 @@ def main():
     
     with chat_col:
         st.markdown("""
-            <div style='background-color: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);'>
+            <div class='chat-container'>
                 <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>💬 Learning Conversation</h3>
             </div>
         """, unsafe_allow_html=True)
@@ -320,7 +291,7 @@ def main():
     
     with viz_col:
         st.markdown("""
-            <div style='background-color: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);'>
+            <div class='chat-container'>
                 <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>📈 Learning Progress</h3>
             </div>
         """, unsafe_allow_html=True)
@@ -377,12 +348,6 @@ def main():
         
         progress_data = st.session_state.tutor.progress_tracker.load_history()
         if progress_data:
-            st.markdown("""
-                <div style='margin-top: 2rem;'>
-                    <h4 style='color: #1E3A8A;'>Learning Journey</h4>
-                </div>
-            """, unsafe_allow_html=True)
-            
             df = pd.DataFrame(progress_data)
             fig = px.line(df, x='timestamp', y='score', color='subject',
                          title='Performance Over Time',
