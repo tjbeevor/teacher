@@ -387,47 +387,47 @@ async def main():
             st.session_state.tutor = OptimizedAITutor()
             st.rerun()
 
-# Main content area
-chat_col, viz_col = st.columns([2, 1])
-
-with chat_col:
-    st.markdown(
-        """
-        <div class='chat-container'>
-            <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>💬 Learning Conversation</h3>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    # Main content area
+    chat_col, viz_col = st.columns([2, 1])
     
-    display_chat_messages()
-    await handle_chat_input(st.session_state.tutor)
+    with chat_col:
+        st.markdown(
+            """
+            <div class='chat-container'>
+                <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>💬 Learning Conversation</h3>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        
+        display_chat_messages()
+        await handle_chat_input(st.session_state.tutor)
 
-with viz_col:
-    st.markdown(
-        """
-        <div class='chat-container'>
-            <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>📈 Learning Progress</h3>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-    
-    if st.button("📝 Take Quiz"):
-        if not topic:
-            st.error("⚠️ Please start a session first")
-        else:
-            st.session_state.quiz_active = True
-            with st.spinner("⚙️ Generating quiz..."):
-                quiz_data = st.session_state.tutor.quiz_generator.generate_quiz(
-                    subject,
-                    topic,
-                    level
-                )
-            if quiz_data:
-                st.session_state.current_quiz = quiz_data
-                st.session_state.quiz_score = 0
-                st.session_state.current_question = 0
+    with viz_col:
+        st.markdown(
+            """
+            <div class='chat-container'>
+                <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>📈 Learning Progress</h3>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        
+        if st.button("📝 Take Quiz"):
+            if not topic:
+                st.error("⚠️ Please start a session first")
+            else:
+                st.session_state.quiz_active = True
+                with st.spinner("⚙️ Generating quiz..."):
+                    quiz_data = st.session_state.tutor.quiz_generator.generate_quiz(
+                        subject,
+                        topic,
+                        level
+                    )
+                if quiz_data:
+                    st.session_state.current_quiz = quiz_data
+                    st.session_state.quiz_score = 0
+                    st.session_state.current_question = 0
         
         if st.session_state.quiz_active and hasattr(st.session_state, 'current_quiz'):
             question = st.session_state.current_quiz['questions'][st.session_state.current_question]
@@ -457,30 +457,22 @@ with viz_col:
                     st.session_state.quiz_active = False
                     st.success(f"🎉 Quiz completed! Score: {final_score}%")
         
-        # Efficient progress visualization with caching
-        @st.cache_data(ttl=300)  # Cache for 5 minutes
-        def get_progress_chart(progress_data):
-            if progress_data:
-                df = pd.DataFrame(progress_data)
-                fig = px.line(df, x='timestamp', y='score', color='subject',
-                             title='Performance Over Time',
-                             template='seaborn')
-                fig.update_layout(
-                    plot_bgcolor='white',
-                    paper_bgcolor='white',
-                    font={'color': '#1E3A8A'},
-                    title={'font': {'size': 20}},
-                    xaxis={'gridcolor': '#E2E8F0'},
-                    yaxis={'gridcolor': '#E2E8F0'}
-                )
-                return fig
-            return None
-
+        # Progress visualization
         progress_data = st.session_state.tutor.progress_tracker.load_history()
         if progress_data:
-            chart = get_progress_chart(progress_data)
-            if chart:
-                st.plotly_chart(chart, use_container_width=True)
+            df = pd.DataFrame(progress_data)
+            fig = px.line(df, x='timestamp', y='score', color='subject',
+                         title='Performance Over Time',
+                         template='seaborn')
+            fig.update_layout(
+                plot_bgcolor='white',
+                paper_bgcolor='white',
+                font={'color': '#1E3A8A'},
+                title={'font': {'size': 20}},
+                xaxis={'gridcolor': '#E2E8F0'},
+                yaxis={'gridcolor': '#E2E8F0'}
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
 async def run_app():
     """Wrapper function to run the async main function"""
