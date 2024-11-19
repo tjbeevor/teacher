@@ -137,33 +137,32 @@ class AITutor:
         prompt = f"""You are an expert tutor in {subject}, teaching a student at {level} level who has {prerequisites} as background.
         Current topic: {topic}
         
-        Follow this structured approach:
-        1. Start with a brief, friendly introduction
-        2. Present a clear outline of what we'll cover about {topic}
-        3. Begin teaching the first concept, using:
-           - Clear explanations
-           - Relevant examples
-           - Real-world applications
-           - Simple analogies when helpful
-        4. After explaining each concept, ask ONE simple question to check understanding
-        5. Wait for the student's response before moving forward
+        Teaching Guidelines:
+        1. Start with a friendly introduction (2-3 sentences)
+        2. Present a brief outline of the topic
+        3. Begin with the first concept:
+           - Explain it clearly
+           - Use an example
+           - Provide a real-world analogy
+        4. Ask a simple question about the concept
         
-        Teaching guidelines:
-        - Break complex ideas into smaller chunks
-        - Use conversational, engaging language
-        - Don't present multiple questions at once
-        - Don't provide answers immediately
-        - Focus on one concept at a time
-        - Let the student think and respond
+        Important:
+        - Keep it conversational
+        - No bullet points or section markers
+        - Write naturally as if speaking
+        - One concept at a time
+        - Wait for student response
         
-        Start now with your introduction and the first concept about {topic}."""
+        Begin your introduction and first concept now.
+        """
         
         try:
             self.chat = self.model.start_chat(history=[])
             self.current_subject = subject
             self.current_topic = topic
             response = self.chat.send_message(prompt)
-            return response.text
+            cleaned_response = response.text.replace("**", "").replace("*", "")
+            return cleaned_response
         except Exception as e:
             return f"Error initializing session: {str(e)}"
     
@@ -171,21 +170,25 @@ class AITutor:
         if not self.chat:
             return "Please start a new session first."
         try:
-            follow_up_prompt = f"""
-            Respond to the student's input, then:
-            1. Provide helpful feedback on their response
-            2. Clarify any misconceptions if needed
-            3. Present the next relevant concept
-            4. Ask ONE question to check understanding
+            follow_up_prompt = """
+            Based on the student's response:
+            1. Acknowledge their answer
+            2. Provide specific feedback
+            3. If the answer was:
+               - Correct: Praise them and move to the next concept
+               - Partially correct: Clarify any misunderstandings, then move on
+               - Incorrect: Explain why gently, provide the correct understanding
+            4. Then present the next concept clearly and concisely
+            5. End with a new question about the concept just presented
             
-            Remember:
-            - Stay focused on one concept at a time
-            - Don't provide multiple questions
-            - Let the student think and respond
-            - Keep the conversation natural and engaging
+            Keep your response natural and encouraging.
+            Avoid using markers like **Topic** or **Question**.
+            Present information in a conversational way.
             """
+            
             response = self.chat.send_message(message + "\n\n" + follow_up_prompt)
-            return response.text
+            cleaned_response = response.text.replace("**", "").replace("*", "")
+            return cleaned_response
         except Exception as e:
             return f"Error: {str(e)}"
 
@@ -263,7 +266,7 @@ def main():
                 st.write(message["content"])
         
         # Chat input
-        if prompt := st.chat_input("Ask your question..."):
+        if prompt := st.chat_input("Type your response here..."):
             if not st.session_state.quiz_active:
                 st.session_state.messages.append({"role": "user", "content": prompt})
                 with st.spinner("Thinking..."):
