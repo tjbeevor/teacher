@@ -6,8 +6,10 @@ from datetime import datetime
 import json
 import os
 
+os.environ["STREAMLIT_SERVER_WATCH_PATCHING"] = "false"
+
 st.set_page_config(
-    page_title="AI Tutor",
+    page_title="AI Tutor | Interactive Learning",
     page_icon="🎓",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -35,12 +37,32 @@ st.markdown("""
             padding: 0.5rem 1rem;
             transition: all 0.3s ease;
         }
+        .stButton>button:hover {
+            background-color: #2563EB;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
         .chat-container {
             background-color: white;
             border-radius: 10px;
             padding: 1.5rem;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             margin-bottom: 1rem;
+        }
+        .stChat {border-radius: 8px; margin-bottom: 1rem;}
+        .stTextInput>div>div>input {border-radius: 8px;}
+        .quiz-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .stSelectbox {margin-bottom: 1rem;}
+        .stRadio > label {
+            background-color: #f8fafc;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -150,18 +172,23 @@ class AITutor:
             raise e
 
     def initialize_session(self, subject, level, prerequisites, topic):
-        prompt = f"""You are a helpful tutor teaching {subject} at {level} level.
-        Background: {prerequisites}
-        Topic: {topic}
+        prompt = f"""You are a helpful and encouraging tutor teaching {subject} at {level} level.
+        The student's background is: {prerequisites}
+        Current topic: {topic}
 
         Begin by:
         1. Warmly welcome the student
-        2. Briefly introduce the topic
+        2. Very briefly introduce the topic
         3. Start teaching the first key concept
-        4. Ask one simple question
+        4. Ask one simple question to check understanding
 
-        Keep it conversational and natural."""
+        Keep your responses:
+        - Natural and conversational
+        - Clear and focused
+        - One concept at a time
+        - Without any special formatting
         
+        Start the lesson now."""
         try:
             self.chat = self.model.start_chat(history=[])
             self.current_subject = subject
@@ -176,15 +203,17 @@ class AITutor:
             return "Please start a new session first."
         try:
             follow_up_prompt = f"""
-            Based on the student's response: "{message}"
+            The student's response was: "{message}"
             
-            1. Acknowledge their answer
-            2. Provide specific feedback
-            3. Teach the next concept
-            4. Ask a new question
+            1. First, acknowledge their answer directly
+            2. Provide specific feedback:
+               - If correct: Confirm and briefly elaborate
+               - If partially correct: Clarify any misunderstandings
+               - If incorrect: Gently explain why
+            3. Then: Teach the next concept
+            4. End with a new question about what you just taught
             
-            Keep it natural and conversational."""
-            
+            Keep it natural and conversational. No special formatting."""
             response = self.chat.send_message(follow_up_prompt)
             return response.text
         except Exception as e:
@@ -256,7 +285,7 @@ def main():
             st.session_state.quiz_active = False
             st.session_state.tutor = AITutor()
             st.rerun()
-    
+
     chat_col, viz_col = st.columns([2, 1])
     
     with chat_col:
@@ -312,12 +341,6 @@ def main():
                     st.session_state.current_question = 0
         
         if st.session_state.quiz_active and hasattr(st.session_state, 'current_quiz'):
-            st.markdown("""
-                <div class='quiz-container'>
-                    <h4 style='color: #1E3A8A;'>Quiz Progress</h4>
-                </div>
-            """, unsafe_allow_html=True)
-            
             question = st.session_state.current_quiz['questions'][st.session_state.current_question]
             
             st.subheader(f"Question {st.session_state.current_question + 1}")
