@@ -134,7 +134,155 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-[previous class definitions remain the same...]
+def check_api_key():
+    """Verify the API key is properly configured."""
+    if 'GOOGLE_API_KEY' not in st.secrets:
+        st.error("🔑 GOOGLE_API_KEY not found in secrets!")
+        st.info("""
+        ### How to fix this:
+        1. Go to your Streamlit Cloud dashboard
+        2. Find this app and click on the three dots (...)
+        3. Select 'Settings'
+        4. Under 'Secrets', add your API key like this:
+        ```
+        GOOGLE_API_KEY = "your-actual-key-here-with-quotes"
+        ```
+        5. Click 'Save'
+        6. Restart the app
+        """)
+        return False
+    
+    try:
+        genai.configure(api_key=st.secrets['GOOGLE_API_KEY'])
+        model = genai.GenerativeModel('gemini-pro')
+        response = model.generate_content("Test")
+        return True
+    except Exception as e:
+        st.error(f"🚨 Error with API key: {str(e)}")
+        return False
+
+class QuizGenerator:
+    def __init__(self, model):
+        self.model = model
+
+    def generate_quiz(self, subject, topic, difficulty, num_questions=5):
+        prompt = f"""Create a quiz about {topic} in {subject} at {difficulty} level.
+        Generate exactly {num_questions} questions based on what we've discussed.
+        
+        Format each question like this:
+        {{
+            "questions": [
+                {{
+                    "question": "Write a clear, focused question about a single concept",
+                    "options": [
+                        "A) First option",
+                        "B) Second option",
+                        "C) Third option",
+                        "D) Fourth option"
+                    ],
+                    "correct_answer": "A) First option",
+                    "explanation": "Brief explanation of why this answer is correct"
+                }}
+            ]
+        }}"""
+        
+        try:
+            response = self.model.generate_content(prompt)
+            return json.loads(response.text)
+        except Exception as e:
+            st.error(f"Failed to generate quiz: {str(e)}")
+            return None
+
+class ProgressTracker:
+    def __init__(self):
+        self.history_file = "progress_history.json"
+    
+    def load_history(self):
+        try:
+            if os.path.exists(self.history_file):
+                with open(self.history_file, 'r') as f:
+                    return json.load(f)
+        except Exception as e:
+            st.warning(f"Could not load progress history: {e}")
+        return []
+    
+    def save_progress(self, user, subject, topic, quiz_score, timestamp=None):
+        try:
+            history = self.load_history()
+            history.append({
+                'user': user,
+                'subject': subject,
+                'topic': topic,
+                'score': quiz_score,
+                'timestamp': timestamp or datetime.now().isoformat()
+            })
+            with open(self.history_file, 'w') as f:
+                json.dump(history, f)
+        except Exception as e:
+            st.warning(f"Could not save progress: {e}")
+
+class AITutor:
+    def __init__(self):
+        try:
+            self.model = genai.GenerativeModel('gemini-pro')
+            self.quiz_generator = QuizGenerator(self.model)
+            self.progress_tracker = ProgressTracker()
+            self.chat = None
+            self.current_subject = None
+            self.current_topic = None
+        except Exception as e:
+            st.error(f"Error initializing AI Tutor: {str(e)}")
+            raise e
+    
+    def initialize_session(self, subject, level, prerequisites, topic):
+        prompt = f"""You are a helpful and encouraging tutor teaching {subject} at {level} level.
+        The student's background is: {prerequisites}
+        Current topic: {topic}
+
+        Begin by:
+        1. Warmly welcome the student
+        2. Very briefly introduce the topic
+        3. Start teaching the first key concept
+        4. Ask one simple question to check understanding
+
+        Keep your responses:
+        - Natural and conversational
+        - Clear and focused
+        - One concept at a time
+        - Without any special formatting
+        
+        Start the lesson now."""
+        
+        try:
+            self.chat = self.model.start_chat(history=[])
+            self.current_subject = subject
+            self.current_topic = topic
+            response = self.chat.send_message(prompt)
+            return response.text
+        except Exception as e:
+            return f"Error initializing session: {str(e)}"
+    
+    def send_message(self, message):
+        if not self.chat:
+            return "Please start a new session first."
+        try:
+            follow_up_prompt = f"""
+            The student's response was: "{message}"
+            
+            1. First, acknowledge their answer directly
+            2. Provide specific feedback:
+               - If correct: Confirm and briefly elaborate
+               - If partially correct: Clarify any misunderstandings
+               - If incorrect: Gently explain why
+            3. Then: Teach the next concept
+            4. End with a new question about what you just taught
+            
+            Keep it natural and conversational. No special formatting."""
+            
+            response = self.chat.send_message(follow_up_prompt)
+            return response.text
+        except Exception as e:
+            return f"Error: {str(e)}"
 
 def main():
     # Check API key first
@@ -313,3 +461,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+        
