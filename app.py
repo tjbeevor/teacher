@@ -365,4 +365,32 @@ def main():
         """, unsafe_allow_html=True)
 
         try:
-            progress_data = st.
+            progress_data = st.session_state.tutor.progress_tracker.load_history()
+            if progress_data and len(progress_data) > 0:
+                df = pd.DataFrame(progress_data)
+                fig = px.line(
+                    df, 
+                    x='timestamp', 
+                    y='score', 
+                    color='subject',
+                    title='Performance Over Time',
+                    template='seaborn'
+                )
+                fig.update_layout(
+                    plot_bgcolor='white',
+                    paper_bgcolor='white',
+                    font={'color': '#1E3A8A'},
+                    title={'font': {'size': 20}},
+                    xaxis={'gridcolor': '#E2E8F0'},
+                    yaxis={'gridcolor': '#E2E8F0'}
+                )
+                st.plotly_chart(fig, use_container_width=True)
+        except Exception as e:
+            st.warning("No progress data available yet.")
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        st.error(f"An error occurred: {str(e)}")
+        st.error("Please refresh the page and try again.")
