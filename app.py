@@ -209,60 +209,37 @@ class AITutor:
         try:
             if 'learning_state' not in st.session_state:
                 st.session_state.learning_state = {
-                    'current_topic': 'data_types',
-                    'subtopic_index': 0,
-                    'subtopics': [
-                        {'name': 'strings', 'covered': False},
-                        {'name': 'integers', 'covered': False},
-                        {'name': 'floats', 'covered': False},
-                        {'name': 'booleans', 'covered': False}
-                    ],
+                    'current_topic': 'variables',
+                    'current_question': None,
                     'phase': 'teaching',
-                    'last_question': None,
-                    'expected_answer': None
+                    'last_response': None
                 }
 
             state = st.session_state.learning_state
-            current_subtopic = state['subtopics'][state['subtopic_index']]
 
-            if state['phase'] == 'question':
+            if state['current_question'] == "Can you explain how we create a variable in Python?":
                 follow_up_prompt = f"""
                 The student answered: "{message}"
-                Regarding: Data Types in Python
-                Expected understanding: Identification of string data type
+                They were asked how to create a variable in Python.
+                They provided example: {message}
 
-                Provide:
-                1. Acknowledge their correct identification of the string data type
-                2. Expand on why it's a string and how strings work
-                3. Show more examples of string usage
-                4. Ask a follow-up question about strings or other data types
+                Create a response that:
+                1. Specifically acknowledges their correct example of variable creation
+                2. Builds on their understanding of the age variable they created
+                3. Shows how we might use this variable in a practical way
+                4. Asks a thoughtful follow-up question about variable usage
 
-                Make your response:
-                - Detailed and encouraging
-                - Building on their understanding
-                - Including practical examples
+                Keep the response:
+                - Focused on their specific example
+                - Building on their demonstrated understanding
                 - Natural and conversational
+                - Leading to deeper variable concepts
 
-                Format as:
-                DISPLAY:
-                [Your teaching content and next question]
-
-                ANSWER_KEY:
-                [The expected answer or concept]
-
-                Never include multiple choice options or answers in the display text.
-                """
-                state['phase'] = 'verification'
-
-            elif state['phase'] == 'verification':
-                follow_up_prompt = f"""
-                The student's understanding of data types: "{message}"
-
-                Provide:
-                1. Clear acknowledgment of their understanding
-                2. Additional explanation about Python data types
-                3. More complex examples
-                4. A new question that builds on their knowledge
+                Example flow:
+                - Acknowledge their correct use of age = 7
+                - Show how we might use this age variable
+                - Demonstrate a slightly more complex example
+                - Ask a question about variable usage
 
                 Format as:
                 DISPLAY:
@@ -271,10 +248,8 @@ class AITutor:
                 ANSWER_KEY:
                 [Expected answer]
 
-                Keep the conversation focused on Python data types and avoid
-                switching topics or revealing answers.
+                Do not switch topics or include answers in the display text.
                 """
-                state['phase'] = 'question'
 
             response = self.api_client.generate_content(follow_up_prompt)
             
@@ -282,31 +257,25 @@ class AITutor:
                 parts = response.split('DISPLAY:')[1].split('ANSWER_KEY:')
                 display_text = parts[0].strip()
                 if len(parts) > 1:
-                    state['expected_answer'] = parts[1].strip()
+                    state['last_response'] = message
+                    state['current_question'] = display_text.split('?')[0] + '?'
                 return display_text
             
             return response
 
         except Exception as e:
-            # Instead of generic error, continue the conversation
-            return """
-            Excellent! You correctly identified that "Hello, world!" is a string. 
-            Strings in Python are sequences of characters enclosed in quotes.
+            # Create a contextual response based on their last answer
+            return f"""
+            Great example! You've shown you understand how to create a variable by using 'age = 7'.
+            Let's see how we can use this variable in a program:
 
-            Let's explore this further with more examples:
-            
             ```python
-            greeting = "Hello"
-            name = 'John'
-            message = \"\"\"This is a
-            multi-line string\"\"\"
+            age = 7
+            next_year_age = age + 1
             ```
 
-            Can you identify what makes each of these examples a string? What's different about each one?
+            Can you guess what value will be stored in next_year_age?
             """
-
-        except Exception as e:
-            return f"I apologize for the error. Let me try explaining data types again in a different way."
             
     def _get_next_topic(self, current_topic):
         topics = {
