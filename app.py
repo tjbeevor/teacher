@@ -12,16 +12,15 @@ from concurrent.futures import ThreadPoolExecutor
 # Configuration
 os.environ["STREAMLIT_SERVER_WATCH_PATCHING"] = "false"
 
-# Page configuration
+# Page Configuration
 st.set_page_config(
     page_title="AI Tutor | Interactive Learning",
     page_icon="🎓",
     layout="wide",
-    initial_sidebar_state="expanded",
-    menu_items={"Get help": None, "Report a bug": None, "About": None}
+    initial_sidebar_state="expanded"
 )
 
-# Apply CSS styles
+# CSS for Styling
 st.markdown("""
 <style>
 .main {background-color: #f8f9fa;}
@@ -54,26 +53,10 @@ st.markdown("""
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     margin-bottom: 1rem;
 }
-.stChat {border-radius: 8px; margin-bottom: 1rem;}
-.stTextInput>div>div>input {border-radius: 8px;}
-.quiz-container {
-    background-color: white;
-    border-radius: 10px;
-    padding: 1.5rem;
-    margin-top: 1rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-.stSelectbox {margin-bottom: 1rem;}
-.stRadio > label {
-    background-color: #f8fafc;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    margin-bottom: 0.5rem;
-}
 </style>
 """, unsafe_allow_html=True)
 
-# Classes for caching, API, quiz generation, and progress tracking
+# Caching System Class
 class CachingSystem:
     def __init__(self):
         self.cache = {}
@@ -89,6 +72,7 @@ class CachingSystem:
     def cache_response(self, prompt: str, response: str):
         self.cache[prompt] = response
 
+# API Client Class
 class APIClient:
     def __init__(self, api_key: str):
         self.api_key = api_key
@@ -99,12 +83,10 @@ class APIClient:
 
     def generate_content(self, prompt: str) -> str:
         if not prompt:
-            return "I apologize, but I need a prompt to generate a response."
-
+            return "I need a prompt to generate a response."
         cached_response = self.cache.get_cached_response(prompt)
         if cached_response:
             return cached_response
-
         try:
             response = self.executor.submit(
                 lambda: self.model.generate_content(prompt)
@@ -113,18 +95,19 @@ class APIClient:
                 self.cache.cache_response(prompt, response.text)
                 return response.text
             else:
-                return "I couldn't generate a proper response. Let me try a different approach."
+                return "Unable to generate a response. Try rephrasing your prompt."
         except Exception as e:
             st.error(f"API Error: {str(e)}")
-            return "I encountered an error while generating content."
+            return "An error occurred while generating content."
 
+# Quiz Generator Class
 class QuizGenerator:
     def __init__(self, api_client: APIClient):
         self.api_client = api_client
 
     def generate_quiz(self, subject: str, topic: str, difficulty: str, num_questions: int = 5) -> dict:
         prompt = f"""Create a quiz about {topic} in {subject} at {difficulty} level. 
-        Generate {num_questions} questions. Format: JSON list of questions with options, correct answer, and explanation."""
+        Generate exactly {num_questions} questions in JSON format."""
         try:
             response = self.api_client.generate_content(prompt)
             return json.loads(response)
@@ -132,6 +115,7 @@ class QuizGenerator:
             st.error(f"Quiz generation failed: {str(e)}")
             return None
 
+# Progress Tracker Class
 class ProgressTracker:
     def __init__(self):
         self.history_file = "progress_history.json"
@@ -183,17 +167,40 @@ class AITutor:
         prompt = f"""As a tutor teaching {self.current_topic} in {self.current_subject}, respond to: {message}."""
         return self.api_client.generate_content(prompt)
 
-# Main Function
-def main():
-    if 'tutor' not in st.session_state:
-        st.session_state.tutor = AITutor()
+# Ensure session state initialization
+if 'tutor' not in st.session_state:
+    st.session_state.tutor = AITutor()
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
 
-    # Add your sidebar, chat UI, quiz handling, and data visualization logic here
-    # Example: starting a session
-    if st.button("🚀 Start New Session"):
-        st.session_state.tutor.initialize_session(
-            "Mathematics", "Beginner", "Basic Algebra", "Linear Equations"
-        )
+# Sidebar UI
+st.sidebar.header("Session Configuration")
+subject = st.sidebar.text_input("Subject", "Mathematics")
+topic = st.sidebar.text_input("Topic", "Linear Algebra")
+level = st.sidebar.selectbox("Level", ["Beginner", "Intermediate", "Advanced"])
+prerequisites = st.sidebar.text_area("Background/Prerequisites")
 
-if __name__ == "__main__":
-    main()
+if st.sidebar.button("🚀 Start Session"):
+    with st.spinner("Initializing session..."):
+        try:
+            response = st.session_state.tutor.initialize_session(subject, level, prerequisites, topic)
+            st.session_state.messages = [{"role": "assistant", "content": response}]
+            st.success("Session started!")
+        except Exception as e:
+            st.error(f"Error starting session: {e}")
+
+# Chat UI
+st.header("Interactive AI Tutor")
+for message in st.session_state.messages:
+    st.write(f"**{message['role'].capitalize()}:** {message['content']}")
+
+user_input = st.text_input("Your message")
+if st.button("Send"):
+    if user_input:
+        st.session_state.messages.append({"role": "user", "content": user_input})
+        with st.spinner("Thinking..."):
+            try:
+                response = st.session_state.tutor.send_message(user_input)
+                st.session_state.messages.append({"role": "assistant", "content": response})
+            except Exception as e:
+                st.error(f"Error during conversation: {e}")
