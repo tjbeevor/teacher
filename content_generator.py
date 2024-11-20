@@ -84,132 +84,143 @@ class LessonGenerator:
             formatted_topics.append(f"{i}. {topic}")
         return "\n".join(formatted_topics)
     
-    def generate_lesson_content(self, topic: str, all_topics: List[str], current_index: int) -> Optional[Dict[str, str]]:
-        """Generate comprehensive lesson content."""
-        prompt = f"""Create an engaging lesson about {topic} (Topic {current_index + 1} of {len(all_topics)}).
+    def generate_lesson(self, topic: str, level: str) -> Dict[str, str]:
+        prompt = f"""Create a detailed, engaging lesson about {topic} for {level} level students.
+        
+        Structure your response EXACTLY using these section headers, and make sure each section has substantial content:
 
-[LEARNING OBJECTIVES]
-Start with 3-4 clear, measurable learning objectives using Bloom's Taxonomy verbs (explain, analyze, evaluate, etc.).
-Format as bullet points.
+        [OBJECTIVES]
+        • Create 3 specific learning objectives using Bloom's Taxonomy verbs
+        • Make them measurable and appropriate for {level} level
+        • Focus on practical skills and understanding
 
-[HOOK]
-Create an engaging hook that:
-• Poses an intriguing question or scenario
-• Connects to real-world experiences
-• Sparks curiosity about {topic}
+        [INTRODUCTION]
+        • Start with an engaging hook or real-world example
+        • Explain why {topic} is important
+        • Connect to previous knowledge
+        • Set expectations for what will be learned
 
-[CORE CONCEPTS]
-Break down {topic} into 3 main ideas:
-1. [Foundation Concept]
-   • Clear explanation using analogies
-   • Common examples
-   • Key terminology explained simply
-   
-2. [Main Principle]
-   • Detailed explanation with visuals
-   • Step-by-step breakdown
-   • Connections to previous knowledge
-   
-3. [Advanced Application]
-   • Complex examples
-   • Real-world applications
-   • Common challenges and solutions
+        [CORE CONCEPTS]
+        1. Fundamental Concept:
+           • Detailed explanation in simple terms
+           • Key terminology defined
+           • Basic examples
+           • Common misconceptions addressed
 
-[MISCONCEPTIONS]
-List 2-3 common misconceptions about {topic}:
-• State the misconception
-• Explain why it's incorrect
-• Provide the correct understanding
+        2. Main Principles:
+           • In-depth explanation
+           • Step-by-step breakdown
+           • Visual or conceptual examples
+           • Practical applications
 
-[INTERACTIVE ELEMENTS]
-Create 3 engaging activities:
-1. "Think About It" question for individual reflection
-2. Real-world scenario for analysis
-3. "What if" scenario for deeper thinking
+        3. Advanced Ideas:
+           • Higher-level concepts
+           • Real-world applications
+           • Best practices
+           • Common pitfalls and solutions
 
-[REAL-WORLD APPLICATIONS]
-Provide compelling examples of {topic} in:
-• Current technology or research
-• Industry applications
-• Everyday life
+        [EXAMPLES]
+        Example 1 (Basic):
+        • Provide a simple, clear example
+        • Include step-by-step explanation
+        • Show expected output or result
+        • Explain why it works
 
-[PRACTICE QUESTION]
-Create a thought-provoking question that:
-• Requires understanding of multiple concepts
-• Connects to real-world scenarios
-• Prompts critical thinking
-• Has multiple valid approaches
+        Example 2 (Advanced):
+        • Show a more complex, real-world example
+        • Break down the implementation
+        • Discuss variations and alternatives
+        • Include best practices
 
-Format all content in clear, engaging language appropriate for {current_index + 1}/{len(all_topics)} progression.
-"""
+        [PRACTICE]
+        • Create a challenging but appropriate question
+        • Include specific requirements
+        • Provide context or scenario
+        • List key points to address in the answer
+
+        Make all content clear, engaging, and specifically tailored for {level} level students learning {topic}."""
 
         response = self.generate_with_retry(prompt)
         if not response:
-            return None
+            return self.get_default_lesson(topic)
 
         try:
-            sections = response.split('[')
-            content = {}
-            
+            sections = {}
             current_section = None
-            section_content = []
-            
-            for line in response.split('\n'):
+            current_content = []
+
+            lines = response.split('\n')
+            for line in lines:
                 if line.strip().startswith('[') and line.strip().endswith(']'):
-                    if current_section and section_content:
-                        content[current_section.lower()] = '\n'.join(section_content)
-                        section_content = []
+                    if current_section and current_content:
+                        sections[current_section.lower()] = '\n'.join(current_content)
                     current_section = line.strip()[1:-1]
+                    current_content = []
                 elif line.strip() and current_section:
-                    section_content.append(line.strip())
-            
-            if current_section and section_content:
-                content[current_section.lower()] = '\n'.join(section_content)
+                    current_content.append(line.strip())
 
-            # Format the content into a lesson structure
-            lesson = f"""## Learning Objectives
-{content.get('learning objectives', 'Learning objectives not available.')}
+            if current_section and current_content:
+                sections[current_section.lower()] = '\n'.join(current_content)
 
-## Introduction
-{content.get('hook', 'Hook not available.')}
-
-## Core Concepts
-{content.get('core concepts', 'Core concepts not available.')}
-
-## Common Misconceptions
-{content.get('misconceptions', 'Misconceptions not available.')}"""
-
-            return {
-                'lesson': lesson,
-                'interactive': content.get('interactive elements', 'Interactive elements not available.'),
-                'applications': content.get('real-world applications', 'Applications not available.'),
-                'question': content.get('practice question', 'Practice question not available.')
+            # Add section headers and formatting
+            formatted_sections = {
+                'objectives': f"### Learning Objectives\n{sections.get('objectives', 'No objectives specified.')}",
+                'introduction': f"### Overview\n{sections.get('introduction', 'No introduction available.')}",
+                'core_concepts': f"### Core Concepts\n{sections.get('core concepts', 'No core concepts available.')}",
+                'examples': f"### Examples\n{sections.get('examples', 'No examples available.')}",
+                'practice': f"### Practice Question\n{sections.get('practice', 'No practice question available.')}"
             }
 
+            return formatted_sections
+
         except Exception as e:
-            st.error(f"Error parsing lesson content: {str(e)}")
-            return None
+            print(f"Error in generate_lesson: {str(e)}")
+            return self.get_default_lesson(topic)
 
-    def get_fallback_content(self, topic: str) -> Dict[str, str]:
-        """Provide fallback content when API fails."""
+    def get_default_lesson(self, topic: str) -> Dict[str, str]:
         return {
-            'lesson': f"""## Learning Objectives
-• Understand the basic principles of {topic}
-• Identify key components and relationships
-• Apply concepts to simple scenarios
-
-## Introduction
-Let's explore {topic} and its importance in our world.
-
-## Core Concepts
+            'objectives': f"""### Learning Objectives
+- Understand the fundamental principles of {topic}
+- Apply basic {topic} concepts to solve simple problems
+- Analyze and explain how {topic} works in practice""",
+            
+            'introduction': f"""### Overview
+Welcome to {topic}! This fundamental concept is crucial for understanding how to build effective programs. 
+We'll explore the basic principles, see how they work in practice, and learn to apply them in real-world scenarios.""",
+            
+            'core_concepts': f"""### Core Concepts
 1. Basic Principles
-2. Key Components
-3. Fundamental Relationships
+   • Understanding the fundamentals
+   • Key terminology and concepts
+   • Basic usage patterns
 
-## Common Misconceptions
-• Common misunderstanding #1
-• Common misunderstanding #2""",
-            'interactive': "Let's think about how this applies to everyday life...",
-            'applications': f"Here are some ways {topic} is used in the real world...",
-            'question': f"Explain how {topic} works and why it's important."
+2. Implementation Details
+   • How to apply {topic}
+   • Best practices and conventions
+   • Common patterns and uses
+
+3. Advanced Considerations
+   • Performance implications
+   • Error handling
+   • Optimization strategies""",
+            
+            'examples': """### Examples
+1. Basic Example
+   • Simple implementation
+   • Step-by-step explanation
+   • Expected outcomes
+
+2. Advanced Example
+   • Real-world scenario
+   • Complex implementation
+   • Best practices demonstrated""",
+            
+            'practice': f"""### Practice Question
+Create a solution that demonstrates your understanding of {topic}. 
+
+Consider:
+- Basic implementation
+- Error handling
+- Best practices
+- Real-world applicability"""
         }
