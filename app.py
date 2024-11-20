@@ -265,7 +265,48 @@ def main():
     chat_col, viz_col = st.columns([2, 1])
 
     with st.sidebar:
-        # ... (keep the existing sidebar code)
+        st.markdown("""
+        <div style='text-align: center; padding-bottom: 1rem;'>
+            <h3 style='color: #1E3A8A;'>Session Configuration</h3>
+        </div>
+        """, unsafe_allow_html=True)
+
+        user_name = st.text_input("👤 Your Name")
+        subjects = [
+            "Python Programming",
+            "Mathematics",
+            "Physics",
+            "Chemistry",
+            "Biology",
+            "History",
+            "Literature",
+            "Economics"
+        ]
+        subject = st.selectbox("📚 Select Subject", subjects)
+        levels = ["Beginner", "Intermediate", "Advanced"]
+        level = st.selectbox("📊 Select Level", levels)
+        topic = st.text_input("🎯 Specific Topic")
+        prerequisites = st.text_area("🔍 Your Background/Prerequisites")
+
+        if st.button("🚀 Start New Session"):
+            if not topic or not prerequisites:
+                st.error("⚠️ Please fill in both Topic and Prerequisites")
+            else:
+                with st.spinner("🔄 Initializing your session..."):
+                    response = st.session_state.tutor.initialize_session(
+                        subject, level, prerequisites, topic
+                    )
+                    st.session_state.messages = []
+                    st.session_state.messages.append({"role": "assistant", "content": response})
+                st.success("✨ Session started!")
+
+        if st.button("🔄 Reset Session"):
+            st.session_state.messages = []
+            st.session_state.quiz_active = False
+            st.session_state.current_quiz = None
+            st.session_state.quiz_score = 0
+            st.session_state.current_question = 0
+            st.experimental_rerun()
 
     with chat_col:
         st.markdown("""
@@ -317,11 +358,11 @@ def main():
                 pass
 
     with viz_col:
-        # ... (keep the existing visualization code)
+        st.markdown("""
+        <div class='chat-container'>
+            <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>📈 Learning Progress</h3>
+        </div>
+        """, unsafe_allow_html=True)
 
-if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        st.error(f"An error occurred: {str(e)}")
-        st.error("Please refresh the page and try again.")
+        try:
+            progress_data = st.
