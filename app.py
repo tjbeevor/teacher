@@ -192,13 +192,11 @@ class AITutor:
         except Exception as e:
             return f"Error initializing session: {str(e)}"
 
-
     def send_message(self, message: str) -> str:
         if not st.session_state.messages:
             return "Please start a new session first."
         
         try:
-            # Initialize learning progression if not exists
             if 'learning_progression' not in st.session_state:
                 st.session_state.learning_progression = {
                     'current_topic': 'variables',
@@ -210,75 +208,69 @@ class AITutor:
                         'best_practices'
                     ],
                     'current_subtopic': 0,
-                    'understanding_level': 0,  # 0: introduction, 1: basic understanding, 2: mastery
-                    'examples_given': 0
+                    'understanding_level': 0,
+                    'examples_given': 0,
+                    'expected_answer': None  # Track expected answer separately
                 }
 
-            # Check if student has demonstrated understanding and is ready to move on
-            understanding_indicators = [
-                'got it', 'understand', 'makes sense', 'i see', 
-                'next topic', 'move on', 'what else'
-            ]
-            ready_to_advance = any(indicator in message.lower() for indicator in understanding_indicators)
-
-            if st.session_state.learning_progression['examples_given'] >= 2 and ready_to_advance:
-                # Move to next subtopic
-                st.session_state.learning_progression['current_subtopic'] += 1
-                st.session_state.learning_progression['examples_given'] = 0
-                
+            # Determine if this is a student answer to check
+            if st.session_state.learning_progression.get('expected_answer'):
+                # Check answer but don't include correct answer in response
                 follow_up_prompt = f"""
-                The student has shown understanding of the current concept. 
-                Current subtopic: {st.session_state.learning_progression['subtopics'][st.session_state.learning_progression['current_subtopic']]}
-                Previous subtopic: {st.session_state.learning_progression['subtopics'][st.session_state.learning_progression['current_subtopic']-1]}
+                The student's response: "{message}"
+                The correct answer is: {st.session_state.learning_progression['expected_answer']}
 
-                Provide:
-                1. A brief summary of what they've learned
-                2. A natural transition to the new subtopic
-                3. A rich, practical example of the new concept
-                4. A thought-provoking question about the new concept
+                If correct:
+                - Acknowledge their understanding positively
+                - Explain why their answer is correct
+                - Present a new, more challenging concept
+                - Ask a new question (without including the answer)
 
-                Example format:
-                "Excellent! You've shown a good understanding of [previous concept]. 
-                Now that you know [previous concept], let's explore [new concept].
-                [Detailed explanation with practical example]
-                [Single engaging question]"
+                If incorrect:
+                - Encourage their effort
+                - Guide them toward the correct understanding without revealing the answer
+                - Provide a helpful hint or example
+                - Give them another chance with a similar question
 
-                Make the response detailed and engaging, using real-world analogies 
-                and practical coding examples.
+                Never include the answer in your response. Let the student discover it.
                 """
+                # Clear the expected answer after checking
+                st.session_state.learning_progression['expected_answer'] = None
             else:
-                # Continue with current topic but advance the complexity
+                # Generate a new question with tracked answer
                 follow_up_prompt = f"""
-                Based on the student's response: "{message}"
                 Current subtopic: {st.session_state.learning_progression['subtopics'][st.session_state.learning_progression['current_subtopic']]}
-                Examples given: {st.session_state.learning_progression['examples_given']}
 
-                If the response shows understanding:
-                - Acknowledge their correct understanding
-                - Provide a more complex example of the current concept
-                - Show how this concept connects to real-world programming
-                - Ask a single, thought-provoking question that builds on their knowledge
+                Create an engaging response that:
+                1. Builds on the previous discussion
+                2. Introduces new information if appropriate
+                3. Asks a single, clear question
+                4. SEPARATELY specify the correct answer (it will be stored but not shown to the student)
 
-                If the response shows confusion:
-                - Clarify any misconceptions
-                - Provide a different explanation with a new analogy
-                - Include a detailed, practical example
-                - Ask a simpler question to build confidence
+                Format your response in two parts:
+                RESPONSE_TO_SHOW: [Your teaching response and question]
+                CORRECT_ANSWER: [The answer you're looking for]
 
-                Make your response detailed and rich with examples. Include code samples 
-                where appropriate, and ensure examples are practical and realistic.
-                Avoid repetitive analogies and build complexity gradually.
+                Make the question practical and engaging, but never include the answer 
+                in the response shown to the student.
                 """
 
-            st.session_state.learning_progression['examples_given'] += 1
-            
-            # Add previous context
-            previous_messages = st.session_state.messages[-3:]
-            context = "\n".join([f"{msg['role']}: {msg['content']}" for msg in previous_messages])
-            follow_up_prompt += f"\n\nPrevious context:\n{context}"
-            
             response = self.api_client.generate_content(follow_up_prompt)
+            
+            # Parse response if it contains separate answer
+            if 'RESPONSE_TO_SHOW:' in response:
+                parts = response.split('RESPONSE_TO_SHOW:')[1].split('CORRECT_ANSWER:')
+                student_response = parts[0].strip()
+                correct_answer = parts[1].strip() if len(parts) > 1 else None
+                
+                # Store the expected answer for next interaction
+                if correct_answer:
+                    st.session_state.learning_progression['expected_answer'] = correct_answer
+                
+                return student_response
+            
             return response
+            
         except Exception as e:
             return f"Error: {str(e)}"
 
