@@ -32,19 +32,37 @@ class AITutor:
 
     def initialize_session(self, subject, level, prerequisites, topic):
         prompt = f"""
-        As a tutor teaching {subject} at {level} level, provide 5 key subtopics to cover for {topic}.
+        As a tutor teaching {subject} at {level} level, list exactly 5 key subtopics to cover for {topic}.
         Consider the student's background: {prerequisites}
-        Format as a simple comma-separated list.
+        Format your response exactly like this example:
+        1. First Topic
+        2. Second Topic
+        3. Third Topic
+        4. Fourth Topic
+        5. Fifth Topic
         """
         try:
             response = self.api_client.generate_content(prompt)
             if response:
-                # Split the response into topics
-                self.topics = [t.strip() for t in response.split(',')]
-                if len(self.topics) > 0:
+                # Extract topics and clean them
+                topics = [line.split('. ')[1].strip() 
+                         for line in response.split('\n') 
+                         if line.strip() and line[0].isdigit()]
+                if len(topics) == 5:
+                    self.topics = topics
                     self.current_topic_index = 0
                     self.current_topic = self.topics[self.current_topic_index]
-                    return f"Great! Let's start our lesson on {topic}. We'll cover: {', '.join(self.topics)}. Let's begin with {self.current_topic}."
+                    return f"""Let's begin our study of {topic}! 
+                    
+Here's what we'll cover:
+
+1. {topics[0]}
+2. {topics[1]}
+3. {topics[2]}
+4. {topics[3]}
+5. {topics[4]}
+
+Let's start with {self.current_topic}!"""
             return "I'm sorry, but I couldn't generate topics. Please try again."
         except Exception as e:
             st.error(f"Error initializing session: {str(e)}")
@@ -52,23 +70,34 @@ class AITutor:
 
     def teach_topic(self):
         prompt = f"""
-        Teach this topic: {self.current_topic}
-        Provide:
-        1. A brief lesson (2-3 sentences)
-        2. An example
-        3. A practice question
-        Separate each part with '|||'
+        Create a structured lesson about {self.current_topic}.
+        Format your response exactly like this:
+
+        CONCEPT
+        [Write 2-3 clear, concise sentences explaining the core concept]
+
+        EXAMPLES
+        1. [Provide a specific, practical example]
+        2. [Provide another example showing a different aspect]
+
+        PRACTICE
+        [Ask one clear, specific question that tests understanding of the concept]
         """
         try:
             response = self.api_client.generate_content(prompt)
             if response:
-                parts = response.split('|||')
-                if len(parts) >= 3:
-                    return {
-                        'lesson': parts[0].strip(),
-                        'examples': parts[1].strip(),
-                        'question': parts[2].strip()
-                    }
+                sections = response.split('\n\n')
+                lesson = {'lesson': '', 'examples': '', 'question': ''}
+                
+                for section in sections:
+                    if section.startswith('CONCEPT'):
+                        lesson['lesson'] = section.replace('CONCEPT\n', '')
+                    elif section.startswith('EXAMPLES'):
+                        lesson['examples'] = section.replace('EXAMPLES\n', '')
+                    elif section.startswith('PRACTICE'):
+                        lesson['question'] = section.replace('PRACTICE\n', '')
+                
+                return lesson
             return {
                 'lesson': "I couldn't generate the lesson properly.",
                 'examples': "No examples available.",
@@ -189,13 +218,19 @@ def main():
 
     elif st.session_state.teaching_state == 'teach_topic':
         content = st.session_state.tutor.teach_topic()
-        message = f"""
-        📚 Lesson: {content['lesson']}
-        
-        📝 Example: {content['examples']}
-        
-        ❓ Question: {content['question']}
-        """
+        message = f"""## 📚 {st.session_state.tutor.current_topic}
+
+### Key Concept
+{content['lesson']}
+
+### Examples
+{content['examples']}
+
+### Practice Question
+{content['question']}
+
+Please type your answer below!
+"""
         st.session_state.messages.append({"role": "assistant", "content": message})
         st.session_state.last_question = content['question']
         st.session_state.teaching_state = 'wait_for_answer'
