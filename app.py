@@ -70,260 +70,234 @@ Let's start with {self.current_topic}!"""
 
 
 def teach_topic(self):
-    prompt = f"""
-    Create a comprehensive, university-level lesson about {self.current_topic}
+    current_topic = self.current_topic
     
-    Follow this detailed template:
-    
-    [KEY CONCEPT]
-    1. Start with a clear, engaging introduction that explains the concept's importance in programming
-    2. Provide detailed explanations of all key components and their relationships
-    3. Include real-world applications and use cases
-    4. Explain advantages, limitations, and best practices
-    5. Compare with related concepts and alternatives
-    6. Include important implementation considerations
-    Break this into clearly formatted sections with bullet points and subsections.
-    
-    [EXAMPLES]
-    Provide 4-5 detailed, real-world examples that:
-    1. Start with simple cases and progress to complex scenarios
-    2. Show practical implementations
-    3. Include code samples with detailed explanations
-    4. Demonstrate common patterns and best practices
-    5. Include expected output and behavior
-    6. Point out potential pitfalls and how to avoid them
-    
-    [PRACTICE]
-    Create an engaging discussion question that:
-    1. Tests deep understanding of the concepts
-    2. Requires analytical thinking
-    3. Relates to real-world scenarios
-    4. Has multiple valid approaches to discuss
-    5. Encourages creative problem-solving
-    """
-    try:
-        response = self.api_client.generate_content(prompt)
-        if not response:
-            raise ValueError("No response generated")
-        
-        # Provide rich default content for Advanced Data Structures
-        return {
-            'lesson': """# Understanding Advanced Data Structures in Python
+    # Generate appropriate default content based on the topic
+    default_content = {
+        'lesson': f"""# {current_topic}
 
 ## Introduction
-Advanced data structures are fundamental building blocks that enable efficient data organization and manipulation in complex programs. They provide specialized ways to store and access data, each optimized for specific use cases.
+{self._generate_introduction(current_topic)}
 
-## Key Concepts
+## Core Concepts
+{self._generate_core_concepts(current_topic)}
 
-### 1. Lists and Array-Based Structures
-* **Dynamic Arrays (Lists)**
-  - Automatic resizing and memory management
-  - O(1) access time for individual elements
-  - Contiguous memory allocation for efficient iteration
-  - Best for: Sequential access, random access, and frequent modifications
-  
-* **Tuples**
-  - Immutable sequences
-  - Memory efficient
-  - Useful for data integrity and as dictionary keys
-  - Performance benefits in certain operations
+## Key Points to Remember
+{self._generate_key_points(current_topic)}""",
 
-### 2. Dictionary-Based Structures
-* **Hash Tables (Dictionaries)**
-  - Key-value pair storage
-  - O(1) average case for insertions and lookups
-  - Hash function implementation
-  - Collision resolution strategies
-  
-* **Sets**
-  - Unique elements only
-  - Optimized for membership testing
-  - Mathematical set operations
-  - Hash table implementation internally
+        'examples': self._generate_examples(current_topic),
+        'question': self._generate_practice_question(current_topic)
+    }
 
-### 3. Queue-Based Structures
-* **FIFO Queues**
-  - First-In-First-Out principle
-  - Implementation using collections.deque
-  - Thread-safe alternatives
-  - Common use cases in task scheduling
-  
-* **Priority Queues**
-  - Heap implementation
-  - O(log n) insertion and deletion
-  - Applications in scheduling and optimization
-  - Custom priority definitions
-
-### 4. Stack-Based Structures
-* **LIFO Stacks**
-  - Last-In-First-Out principle
-  - Implementation options
-  - Memory management considerations
-  - Applications in program flow control
-
-### 5. Advanced Implementations
-* **Linked Lists**
-  - Singly and doubly linked
-  - Dynamic memory allocation
-  - Insertion and deletion efficiency
-  - Use cases and limitations
-  
-* **Trees and Graphs**
-  - Hierarchical data representation
-  - Traversal algorithms
-  - Balancing techniques
-  - Real-world applications
-
-## Best Practices
-1. Choose structures based on:
-   - Access patterns
-   - Memory constraints
-   - Performance requirements
-   - Thread safety needs
-   
-2. Consider:
-   - Space-time tradeoffs
-   - Implementation complexity
-   - Maintenance overhead
-   - Team familiarity""",
-
-            'examples': """# Practical Implementations
-
-## 1. Basic Queue Implementation
-```python
-from collections import deque
-
-class CustomerServiceQueue:
-    def __init__(self):
-        self.queue = deque()
-        
-    def add_customer(self, customer_id):
-        self.queue.append(customer_id)
-        return f"Customer {customer_id} added to queue. Position: {len(self.queue)}"
-        
-    def serve_next_customer(self):
-        if self.queue:
-            return f"Now serving customer {self.queue.popleft()}"
-        return "Queue is empty"
-        
-    def queue_size(self):
-        return len(self.queue)
-
-# Usage Example
-service_queue = CustomerServiceQueue()
-print(service_queue.add_customer("A123"))  # Customer A123 added to queue. Position: 1
-print(service_queue.add_customer("B456"))  # Customer B456 added to queue. Position: 2
-print(service_queue.serve_next_customer()) # Now serving customer A123
-```
-
-## 2. Priority Queue for Task Scheduling
-```python
-import heapq
-
-class TaskScheduler:
-    def __init__(self):
-        self.tasks = []  # List of (priority, task_name) tuples
-        
-    def add_task(self, task_name, priority):
-        heapq.heappush(self.tasks, (priority, task_name))
-        
-    def get_next_task(self):
-        if self.tasks:
-            priority, task = heapq.heappop(self.tasks)
-            return f"Running {task} (priority: {priority})"
-        return "No tasks remaining"
-
-# Usage Example
-scheduler = TaskScheduler()
-scheduler.add_task("Emergency backup", 1)
-scheduler.add_task("Regular backup", 3)
-scheduler.add_task("Critical update", 2)
-
-print(scheduler.get_next_task())  # Running Emergency backup (priority: 1)
-print(scheduler.get_next_task())  # Running Critical update (priority: 2)
-```
-
-## 3. Custom Dictionary with History
-```python
-class HistoryDict:
-    def __init__(self):
-        self.data = {}
-        self.history = []
-        
-    def __setitem__(self, key, value):
-        self.history.append((key, self.data.get(key)))
-        self.data[key] = value
-        
-    def __getitem__(self, key):
-        return self.data[key]
-        
-    def undo(self):
-        if self.history:
-            key, old_value = self.history.pop()
-            if old_value is None:
-                del self.data[key]
-            else:
-                self.data[key] = old_value
-
-# Usage Example
-hd = HistoryDict()
-hd["name"] = "Alice"
-hd["name"] = "Bob"
-print(hd["name"])  # Bob
-hd.undo()
-print(hd["name"])  # Alice
-```
-
-## 4. Advanced Graph Implementation
-```python
-from collections import defaultdict
-
-class Graph:
-    def __init__(self):
-        self.graph = defaultdict(list)
-        
-    def add_edge(self, start, end):
-        self.graph[start].append(end)
-        
-    def find_path(self, start, end, path=None):
-        if path is None:
-            path = []
-        path = path + [start]
-        
-        if start == end:
-            return path
+    prompt = f"""
+    Create a comprehensive, university-level lesson about {current_topic}
+    
+    Format your response exactly like this:
+    
+    [KEY CONCEPT]
+    # Title
+    
+    ## Introduction
+    [Thorough introduction explaining the importance and context]
+    
+    ## Core Concepts
+    [Detailed breakdown of main concepts]
+    
+    ## Key Points
+    [Important points to remember]
+    
+    [EXAMPLES]
+    ## Example 1: Basic Implementation
+    [Basic example with explanation]
+    
+    ## Example 2: Intermediate Case
+    [More complex example with explanation]
+    
+    ## Example 3: Advanced Usage
+    [Advanced implementation with explanation]
+    
+    [PRACTICE]
+    [Thought-provoking real-world scenario question]
+    """
+    
+    try:
+        response = self.api_client.generate_content(prompt)
+        if response:
+            parts = response.split('[')
+            lesson = {}
             
-        for vertex in self.graph[start]:
-            if vertex not in path:
-                new_path = self.find_path(vertex, end, path)
-                if new_path:
-                    return new_path
-        return None
-
-# Usage Example
-g = Graph()
-g.add_edge("A", "B")
-g.add_edge("B", "C")
-g.add_edge("C", "D")
-print(g.find_path("A", "D"))  # ['A', 'B', 'C', 'D']
-```""",
-
-            'question': """Let's dive into a real-world scenario:
-
-Imagine you're designing a system for a busy hospital's Emergency Room. The ER needs to manage patients based on both their arrival time AND the severity of their condition. Some patients need immediate attention, while others can wait.
-
-Questions to consider:
-1. Which data structure(s) would you choose to implement this system and why?
-2. How would you handle new arrivals vs. updating the condition of existing patients?
-3. What would happen if multiple doctors need to access and update the system simultaneously?
-
-Share your thoughts on how you would approach this challenge, considering factors like efficiency, fairness, and practical implementation."""
-        }
-        
+            for part in parts:
+                if 'KEY CONCEPT]' in part:
+                    lesson['lesson'] = part.split(']')[1].strip()
+                elif 'EXAMPLES]' in part:
+                    lesson['examples'] = part.split(']')[1].strip()
+                elif 'PRACTICE]' in part:
+                    lesson['question'] = part.split(']')[1].strip()
+            
+            # Verify all parts are present
+            if all(key in lesson for key in ['lesson', 'examples', 'question']):
+                return lesson
+            
+        # If we get here, either no response or missing sections
+        return default_content
+            
     except Exception as e:
         st.error(f"Error in lesson generation: {str(e)}")
-        return None
+        return default_content
 
+def _generate_introduction(self, topic):
+    """Generate a topic-specific introduction."""
+    # Example mapping of topics to introductions
+    intro_templates = {
+        'data types': """Python's data types are fundamental building blocks that determine how data is stored and manipulated. Understanding these types is crucial for writing efficient and error-free code.""",
+        'functions': """Functions are reusable blocks of code that help organize and modularize programs. They are essential for writing maintainable and scalable Python applications.""",
+        'loops': """Loops are control structures that allow repetitive execution of code blocks. They are fundamental for automating repetitive tasks and processing collections of data.""",
+        # Add more mappings as needed
+    }
+    
+    # Default introduction if no specific match
+    default_intro = f"""Understanding {topic} is a crucial part of mastering Python programming. This concept provides essential functionality that you'll use in virtually every Python program you write."""
+    
+    # Search for keywords in the topic and return appropriate introduction
+    for key, intro in intro_templates.items():
+        if key in topic.lower():
+            return intro
+    return default_intro
+
+def _generate_core_concepts(self, topic):
+    """Generate topic-specific core concepts."""
+    concepts = []
+    topic_lower = topic.lower()
+    
+    if 'data' in topic_lower and 'type' in topic_lower:
+        concepts = [
+            "### Numeric Types",
+            "* Integers (int)",
+            "* Floating-point numbers (float)",
+            "* Complex numbers",
+            "\n### Text Type",
+            "* Strings (str)",
+            "\n### Boolean Type",
+            "* True/False values",
+            "\n### Sequence Types",
+            "* Lists",
+            "* Tuples",
+            "* Range objects"
+        ]
+    elif 'function' in topic_lower:
+        concepts = [
+            "### Function Definition",
+            "* Function syntax",
+            "* Parameters and arguments",
+            "* Return values",
+            "\n### Function Types",
+            "* Built-in functions",
+            "* User-defined functions",
+            "* Lambda functions",
+            "\n### Function Scope",
+            "* Local variables",
+            "* Global variables",
+            "* Nonlocal variables"
+        ]
+    # Add more topic-specific concepts
+    
+    return "\n".join(concepts) if concepts else f"### Understanding {topic}\n* Core principles\n* Key components\n* Common use cases"
+
+def _generate_examples(self, topic):
+    """Generate topic-specific examples."""
+    topic_lower = topic.lower()
+    
+    # Base structure for examples
+    example_structure = """## Example 1: Basic Usage
+```python
+{basic_example}
+```
+
+## Example 2: Intermediate Implementation
+```python
+{intermediate_example}
+```
+
+## Example 3: Advanced Application
+```python
+{advanced_example}
+```"""
+    
+    # Topic-specific examples
+    if 'data' in topic_lower and 'type' in topic_lower:
+        return example_structure.format(
+            basic_example="""# Basic data types
+x = 42              # Integer
+y = 3.14           # Float
+name = "Python"     # String
+is_valid = True    # Boolean
+
+print(type(x), x)
+print(type(y), y)
+print(type(name), name)
+print(type(is_valid), is_valid)""",
+            
+            intermediate_example="""# Type conversion
+price = "19.99"
+quantity = 3
+
+# Convert string to float and calculate total
+total = float(price) * quantity
+
+print(f"Total cost: ${total:.2f}")""",
+            
+            advanced_example="""# Complex data type operations
+from decimal import Decimal
+
+# Using Decimal for precise financial calculations
+prices = ['19.99', '9.99', '29.99']
+quantities = [2, 3, 1]
+
+# Calculate total with precision
+total = sum(Decimal(price) * qty 
+           for price, qty in zip(prices, quantities))
+
+print(f"Total: ${total:.2f}")"""
+        )
+    # Add more topic-specific examples
+    
+    return example_structure.format(
+        basic_example=f"# Basic {topic} example\n# Code here",
+        intermediate_example=f"# Intermediate {topic} example\n# Code here",
+        advanced_example=f"# Advanced {topic} example\n# Code here"
+    )
+
+def _generate_practice_question(self, topic):
+    """Generate a topic-specific practice question."""
+    topic_lower = topic.lower()
+    
+    if 'data' in topic_lower and 'type' in topic_lower:
+        return """Let's solve a real-world problem!
+
+You're building a financial application that needs to handle various types of data:
+- Customer names and IDs
+- Account balances
+- Transaction dates
+- Interest rates
+
+How would you:
+1. Choose appropriate data types for each piece of information?
+2. Handle currency calculations to ensure precision?
+3. Convert between different data types as needed?
+4. Validate input data to prevent errors?
+
+Share your approach to handling these requirements while ensuring data accuracy and program efficiency."""
+    
+    # Default question format
+    return f"""Let's apply what we've learned about {topic}!
+
+Consider a real-world scenario where you need to implement this concept:
+1. What key considerations would you keep in mind?
+2. How would you handle edge cases?
+3. How would you optimize for performance?
+4. What best practices would you follow?
+
+Share your thoughts on how you would approach this challenge."""
 
 
 
