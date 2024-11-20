@@ -377,72 +377,29 @@ def main():
         topic = st.text_input("Topic")
         prerequisites = st.text_area("Your Background (Optional)")
 
-    # Main content area with better spacing and formatting
+    # Main content area
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
-            if message["role"] == "assistant" and "Let's begin our study" in message["content"]:
-                # Special formatting for the introduction
-                st.markdown(message["content"])
-            elif message["role"] == "assistant" and "Key Concept" in message["content"]:
-                # Format the lesson content
-                content_parts = message["content"].split("###")
-                
-                # Topic title
-                st.header(content_parts[0].replace("#", "").strip())
-                
-                # Key Concept
-                st.subheader("🔑 Key Concept")
-                concept_text = content_parts[1].replace("Key Concept", "").strip()
-                st.write(concept_text)
-                
-                # Examples
-                st.subheader("📝 Examples")
-                examples_text = content_parts[2].replace("Examples", "").strip()
-                st.markdown(examples_text)
-                
-                # Practice Question
-                st.subheader("❓ Practice Question")
-                question_text = content_parts[3].replace("Practice Question", "").strip()
-                question_text = question_text.replace("Please type your answer below!", "").strip()
-                st.info(question_text)
-            else:
-                # Regular message
-                st.markdown(message["content"])
+            st.markdown(message["content"])
 
+    # Initial state - Topic selection
     if st.session_state.teaching_state == 'initialize':
         if topic and st.button("Start Learning"):
-            response = st.session_state.tutor.initialize_session(
-                subject, level, prerequisites, topic
-            )
-            st.session_state.messages.append({"role": "assistant", "content": response})
-            st.session_state.teaching_state = 'teach_topic'
-            st.rerun()
+            with st.spinner("Preparing your learning path..."):
+                response = st.session_state.tutor.initialize_session(
+                    subject, level, prerequisites, topic
+                )
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                st.session_state.teaching_state = 'teach_topic'
+                st.rerun()
 
+    # Teaching state - Present lesson
     elif st.session_state.teaching_state == 'teach_topic':
-        with st.spinner("Preparing your lesson..."):
-            content = st.session_state.tutor.teach_topic()
-        
-        message = f"""## {st.session_state.tutor.current_topic}
-
-### 🔑 Key Concept
-{content['lesson']}
-
-### 📝 Examples
-{content['examples']}
-
-### ❓ Practice Question
-{content['question']}
-"""
-        st.session_state.messages.append({"role": "assistant", "content": message})
-        st.session_state.last_question = content['question']
-        st.session_state.teaching_state = 'wait_for_answer'
-        st.rerun()
-
-    if st.session_state.teaching_state == 'teach_topic':
-        with st.spinner("Getting your lesson ready..."):
-            content = st.session_state.tutor.teach_topic()
-        
-        message = f"""# {st.session_state.tutor.current_topic}
+        try:
+            with st.spinner("Preparing your lesson..."):
+                content = st.session_state.tutor.teach_topic()
+                if content and all(key in content for key in ['lesson', 'examples', 'question']):
+                    message = f"""# {st.session_state.tutor.current_topic}
 
 ## 🔑 Let's Understand This!
 {content['lesson']}
@@ -453,18 +410,51 @@ def main():
 ## ❓ Let's Chat About This
 {content['question']}
 """
-        st.session_state.messages.append({"role": "assistant", "content": message})
-        st.session_state.last_question = content['question']
-        st.session_state.teaching_state = 'wait_for_answer'
-        st.rerun()
+                    st.session_state.messages.append({"role": "assistant", "content": message})
+                    st.session_state.last_question = content['question']
+                    st.session_state.teaching_state = 'wait_for_answer'
+                    st.rerun()
+                else:
+                    st.error("I couldn't generate the lesson properly. Let's try again!")
+                    st.session_state.teaching_state = 'initialize'
+                    st.rerun()
+        except Exception as e:
+            st.error(f"An error occurred while preparing the lesson: {str(e)}")
+            st.session_state.teaching_state = 'initialize'
+            st.rerun()
 
+    # Waiting for answer state
+    elif st.session_state.teaching_state == 'wait_for_answer':
+        if prompt := st.chat_input("Share your thoughts..."):
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.spinner("Thinking about your response..."):
+                evaluation = st.session_state.tutor.evaluate_answer(
+                    st.session_state.last_question, prompt
+                )
+                
+                # Format feedback with appropriate emoji
+                if evaluation['evaluation'] == 'correct':
+                    feedback = f"✨ Great thinking! {evaluation['feedback']}"
+                else:
+                    feedback = f"💭 Interesting perspective! {evaluation['feedback']}"
+                
+                st.session_state.messages.append({"role": "assistant", "content": feedback})
+                
+                if evaluation['move_on']:
+                    if st.session_state.tutor.move_to_next_topic():
+                        st.session_state.teaching_state = 'teach_topic'
+                    else:
+                        st.session_state.teaching_state = 'finished'
+                st.rerun()
+
+    # Finished state
     elif st.session_state.teaching_state == 'finished':
         st.success("🎉 Congratulations! You've completed all topics!")
         if st.button("Start New Topic"):
             st.session_state.teaching_state = 'initialize'
             st.session_state.messages = []
             st.rerun()
-            
+
 if __name__ == "__main__":
     try:
         main()
