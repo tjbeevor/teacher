@@ -228,10 +228,10 @@ class AITutor:
         response = self.api_client.generate_content(prompt)
         try:
             self.topics = json.loads(response)
-        if not isinstance(self.topics, list) or len(self.topics) == 0:
-            raise ValueError("Invalid response format")
-                self.current_topic_index = 0
-                self.current_topic = self.topics[self.current_topic_index]
+            if not isinstance(self.topics, list) or len(self.topics) == 0:
+                raise ValueError("Invalid response format")
+            self.current_topic_index = 0
+            self.current_topic = self.topics[self.current_topic_index]
             return f"Great! Let's start our lesson on {topic}. We'll cover these subtopics: {', '.join(self.topics)}. Let's begin with {self.current_topic}."
             except json.JSONDecodeError as e:
                 st.error(f"Failed to parse the response from the AI. Error: {str(e)}")
