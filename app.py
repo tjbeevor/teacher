@@ -203,80 +203,80 @@ class AITutor:
     return self.api_client.generate_content(prompt)
 
     def send_message(self, message):
-    prompt = f"""
-    The student's response was "{message}". Continue the conversation naturally.
-    Provide feedback and introduce new concepts if appropriate.
-    """
-    return self.api_client.generate_content(prompt)
+        prompt = f"""
+        The student's response was "{message}". Continue the conversation naturally.
+        Provide feedback and introduce new concepts if appropriate.
+        """
+        return self.api_client.generate_content(prompt)
 
 def main():
-if 'tutor' not in st.session_state:
-st.session_state.tutor = AITutor()
+    if 'tutor' not in st.session_state:
+    st.session_state.tutor = AITutor()
 
-chat_col, viz_col = st.columns([2, 1])
+    chat_col, viz_col = st.columns([2, 1])
 
-with st.sidebar:
-st.markdown("""
-<div style='text-align:center;'>
-<h3 style='color:#1E3A8A;'>Session Configuration</h3>
-</div>
-""", unsafe_allow_html=True)
+    with st.sidebar:
+    st.markdown("""
+    <div style='text-align:center;'>
+    <h3 style='color:#1E3A8A;'>Session Configuration</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
-user_name = st.text_input("👤 Your Name")
-subjects = ["Python Programming", "Mathematics", "Physics", "Chemistry",
-"Biology", "History", "Literature", "Economics"]
-subject = st.selectbox("📚 Select Subject", subjects)
-levels = ["Beginner", "Intermediate", "Advanced"]
-level = st.selectbox("📊 Select Level", levels)
-topic = st.text_input("🎯 Specific Topic")
-prerequisites = st.text_area("🔍 Your Background/Prerequisites")
+    user_name = st.text_input("👤 Your Name")
+    subjects = ["Python Programming", "Mathematics", "Physics", "Chemistry",
+    "Biology", "History", "Literature", "Economics"]
+    subject = st.selectbox("📚 Select Subject", subjects)
+    levels = ["Beginner", "Intermediate", "Advanced"]
+    level = st.selectbox("📊 Select Level", levels)
+    topic = st.text_input("🎯 Specific Topic")
+    prerequisites = st.text_area("🔍 Your Background/Prerequisites")
 
-if st.button("🚀 Start New Session"):
-if not topic or not prerequisites:
-st.error("⚠️ Please fill in both Topic and Prerequisites")
-else:
-with st.spinner("🔄 Initializing your session..."):
-response = st.session_state.tutor.initialize_session(
-subject, level, prerequisites, topic
-)
-st.session_state.messages.append({"role": "assistant", "content": response})
-st.success("✨ Session started!")
+    if st.button("🚀 Start New Session"):
+    if not topic or not prerequisites:
+    st.error("⚠️ Please fill in both Topic and Prerequisites")
+    else:
+    with st.spinner("🔄 Initializing your session..."):
+    response = st.session_state.tutor.initialize_session(
+    subject, level, prerequisites, topic
+    )
+    st.session_state.messages.append({"role": "assistant", "content": response})
+    st.success("✨ Session started!")
 
-if st.button("🔄 Reset Session"):
-st.session_state.messages.clear()
-st.experimental_rerun()
+    if st.button("🔄 Reset Session"):
+    st.session_state.messages.clear()
+    st.experimental_rerun()
 
-with chat_col:
-st.markdown("""
-<div class='chat-container'>
-<h3 style='color:#1E3A8A;'>💬 Learning Conversation</h3>
-</div>
-""", unsafe_allow_html=True)
+    with chat_col:
+    st.markdown("""
+    <div class='chat-container'>
+    <h3 style='color:#1E3A8A;'>💬 Learning Conversation</h3>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+    st.markdown(message["content"])
+    
+    if prompt := st.chat_input("💭 Type your response here..."):
+    with st.chat_message("user"):
+    st.markdown(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    
+    with st.chat_message("assistant"):
+    with st.spinner("🤔 Thinking..."):
+    response = st.session_state.tutor.send_message(prompt)
+    st.markdown(response)
+    st.session_state.messages.append({"role": "assistant", "content": response})
+    
+    with viz_col:
+    st.markdown("""
+    <div class='chat-container'>
+    <h3 style='color:#1E3A8A;'>📈 Learning Progress</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
-for message in st.session_state.messages:
-with st.chat_message(message["role"]):
-st.markdown(message["content"])
-
-if prompt := st.chat_input("💭 Type your response here..."):
-with st.chat_message("user"):
-st.markdown(prompt)
-st.session_state.messages.append({"role": "user", "content": prompt})
-
-with st.chat_message("assistant"):
-with st.spinner("🤔 Thinking..."):
-response = st.session_state.tutor.send_message(prompt)
-st.markdown(response)
-st.session_state.messages.append({"role": "assistant", "content": response})
-
-with viz_col:
-st.markdown("""
-<div class='chat-container'>
-<h3 style='color:#1E3A8A;'>📈 Learning Progress</h3>
-</div>
-""", unsafe_allow_html=True)
-
-if __name__ == "__main__":
-try:
-main()
-except Exception as e:
-st.error(f"An error occurred: {str(e)}")
+    if __name__ == "__main__":
+    try:
+    main()
+    except Exception as e:
+    st.error(f"An error occurred: {str(e)}")
