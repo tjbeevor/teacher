@@ -170,21 +170,38 @@ st.set_page_config(
 # Add CSS
 st.markdown("""
 <style>
-.stButton>button {
-    width: 100%;
-    background-color: #4CAF50;
-    color: white;
-    padding: 10px;
-    border-radius: 5px;
-}
-.chat-message {
-    padding: 10px;
-    border-radius: 5px;
-    margin: 5px 0;
-}
+    .stMarkdown {
+        padding: 1rem 0;
+    }
+    .stButton>button {
+        width: 100%;
+        background-color: #4CAF50;
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+    }
+    h1, h2, h3, h4 {
+        color: #1E88E5;
+        padding: 0.5rem 0;
+    }
+    .stAlert {
+        background-color: #E3F2FD;
+        padding: 1rem;
+        border-radius: 5px;
+        margin: 1rem 0;
+    }
+    .chat-message {
+        padding: 1rem;
+        border-radius: 5px;
+        margin: 0.5rem 0;
+    }
+    code {
+        background-color: #F5F5F5;
+        padding: 0.2rem 0.4rem;
+        border-radius: 3px;
+    }
 </style>
 """, unsafe_allow_html=True)
-
 def main():
     st.title("🎓 AI Tutor")
     
@@ -193,7 +210,7 @@ def main():
         st.header("Learning Settings")
         subject = st.selectbox(
             "Subject",
-            ["Mathematics", "Physics", "Chemistry", "Biology", "Computer Science"]
+            ["Mathematics", "Physics", "Chemistry", "Biology", "Computer Science", "Python Programming"]
         )
         level = st.selectbox(
             "Level",
@@ -202,10 +219,37 @@ def main():
         topic = st.text_input("Topic")
         prerequisites = st.text_area("Your Background (Optional)")
 
-    # Main content
+    # Main content area with better spacing and formatting
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
-            st.write(message["content"])
+            if message["role"] == "assistant" and "Let's begin our study" in message["content"]:
+                # Special formatting for the introduction
+                st.markdown(message["content"])
+            elif message["role"] == "assistant" and "Key Concept" in message["content"]:
+                # Format the lesson content
+                content_parts = message["content"].split("###")
+                
+                # Topic title
+                st.header(content_parts[0].replace("#", "").strip())
+                
+                # Key Concept
+                st.subheader("🔑 Key Concept")
+                concept_text = content_parts[1].replace("Key Concept", "").strip()
+                st.write(concept_text)
+                
+                # Examples
+                st.subheader("📝 Examples")
+                examples_text = content_parts[2].replace("Examples", "").strip()
+                st.markdown(examples_text)
+                
+                # Practice Question
+                st.subheader("❓ Practice Question")
+                question_text = content_parts[3].replace("Practice Question", "").strip()
+                question_text = question_text.replace("Please type your answer below!", "").strip()
+                st.info(question_text)
+            else:
+                # Regular message
+                st.markdown(message["content"])
 
     if st.session_state.teaching_state == 'initialize':
         if topic and st.button("Start Learning"):
@@ -218,7 +262,7 @@ def main():
 
     elif st.session_state.teaching_state == 'teach_topic':
         content = st.session_state.tutor.teach_topic()
-        message = f"""## 📚 {st.session_state.tutor.current_topic}
+        message = f"""## {st.session_state.tutor.current_topic}
 
 ### Key Concept
 {content['lesson']}
@@ -229,21 +273,28 @@ def main():
 ### Practice Question
 {content['question']}
 
-Please type your answer below!
-"""
+Please type your answer below!"""
         st.session_state.messages.append({"role": "assistant", "content": message})
         st.session_state.last_question = content['question']
         st.session_state.teaching_state = 'wait_for_answer'
         st.rerun()
 
     elif st.session_state.teaching_state == 'wait_for_answer':
-        if prompt := st.chat_input("Your answer"):
+        # Create a container for the input box
+        input_container = st.container()
+        
+        if prompt := st.chat_input("Type your answer here..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             evaluation = st.session_state.tutor.evaluate_answer(
                 st.session_state.last_question, prompt
             )
             
-            feedback = f"💭 {evaluation['feedback']}"
+            # Format feedback with appropriate emoji
+            if evaluation['evaluation'] == 'correct':
+                feedback = f"✅ Excellent! {evaluation['feedback']}"
+            else:
+                feedback = f"💡 {evaluation['feedback']}"
+            
             st.session_state.messages.append({"role": "assistant", "content": feedback})
             
             if evaluation['move_on']:
@@ -259,7 +310,7 @@ Please type your answer below!
             st.session_state.teaching_state = 'initialize'
             st.session_state.messages = []
             st.rerun()
-
+            
 if __name__ == "__main__":
     try:
         main()
