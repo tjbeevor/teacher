@@ -201,78 +201,116 @@ class AITutor:
                 st.session_state.learning_progression = {
                     'current_topic': 'variables',
                     'subtopics': [
-                        'basic_assignment',
-                        'data_types',
-                        'multiple_assignments',
-                        'variable_naming',
-                        'best_practices'
+                        {'name': 'basic_assignment', 'completed': False},
+                        {'name': 'data_types', 'completed': False},
+                        {'name': 'variable_naming', 'completed': False},
+                        {'name': 'operations', 'completed': False}
                     ],
-                    'current_subtopic': 0,
-                    'understanding_level': 0,
-                    'examples_given': 0,
-                    'expected_answer': None  # Track expected answer separately
+                    'current_question': None,
+                    'expected_answer': None,
+                    'question_context': None
                 }
 
-            # Determine if this is a student answer to check
-            if st.session_state.learning_progression.get('expected_answer'):
-                # Check answer but don't include correct answer in response
-                follow_up_prompt = f"""
-                The student's response: "{message}"
-                The correct answer is: {st.session_state.learning_progression['expected_answer']}
-
-                If correct:
-                - Acknowledge their understanding positively
-                - Explain why their answer is correct
-                - Present a new, more challenging concept
-                - Ask a new question (without including the answer)
-
-                If incorrect:
-                - Encourage their effort
-                - Guide them toward the correct understanding without revealing the answer
-                - Provide a helpful hint or example
-                - Give them another chance with a similar question
-
-                Never include the answer in your response. Let the student discover it.
-                """
-                # Clear the expected answer after checking
-                st.session_state.learning_progression['expected_answer'] = None
+            prog = st.session_state.learning_progression
+            
+            # If we were expecting an answer, process it
+            if prog['expected_answer']:
+                is_correct = self._check_answer(message, prog['expected_answer'])
+                next_subtopic = self._get_next_uncompleted_subtopic()
+                
+                if is_correct:
+                    follow_up_prompt = f"""
+                    The student correctly answered about {prog['question_context']}.
+                    
+                    Respond with:
+                    1. A brief acknowledgment of their correct understanding
+                    2. A natural transition to the next concept: {next_subtopic}
+                    3. A clear explanation of the new concept with a practical example
+                    4. A new question about {next_subtopic}
+                    
+                    Keep the response conversational and never include alternate answers 
+                    or "if incorrect" scenarios.
+                    """
+                else:
+                    follow_up_prompt = f"""
+                    The student's answer about {prog['question_context']} needs clarification.
+                    
+                    Provide:
+                    1. Encouragement for their attempt
+                    2. A clearer explanation using a different approach
+                    3. A simpler example of the same concept
+                    4. A new question that breaks down the concept further
+                    
+                    Keep the response focused and avoid mentioning correct/incorrect 
+                    or multiple answer scenarios.
+                    """
+                
+                # Clear the expected answer state
+                prog['expected_answer'] = None
+                prog['question_context'] = None
+                
             else:
-                # Generate a new question with tracked answer
+                # Generate a new question
+                current_subtopic = self._get_current_subtopic()
+                
                 follow_up_prompt = f"""
-                Current subtopic: {st.session_state.learning_progression['subtopics'][st.session_state.learning_progression['current_subtopic']]}
-
-                Create an engaging response that:
+                Create a natural response that:
                 1. Builds on the previous discussion
-                2. Introduces new information if appropriate
-                3. Asks a single, clear question
-                4. SEPARATELY specify the correct answer (it will be stored but not shown to the student)
-
+                2. Explains {current_subtopic} clearly with examples
+                3. Asks a single, specific question
+                
                 Format your response in two parts:
-                RESPONSE_TO_SHOW: [Your teaching response and question]
-                CORRECT_ANSWER: [The answer you're looking for]
-
-                Make the question practical and engaging, but never include the answer 
-                in the response shown to the student.
+                RESPONSE:
+                [Your teaching content and question]
+                
+                ANSWER_KEY:
+                [The expected answer or concept you're looking for]
+                
+                CONTEXT:
+                [Brief description of what you're asking about]
                 """
 
             response = self.api_client.generate_content(follow_up_prompt)
             
-            # Parse response if it contains separate answer
-            if 'RESPONSE_TO_SHOW:' in response:
-                parts = response.split('RESPONSE_TO_SHOW:')[1].split('CORRECT_ANSWER:')
-                student_response = parts[0].strip()
-                correct_answer = parts[1].strip() if len(parts) > 1 else None
+            # Parse response if it contains answer key
+            if 'RESPONSE:' in response:
+                parts = response.split('RESPONSE:')[1].split('ANSWER_KEY:')
+                teaching_response = parts[0].strip()
+                if len(parts) > 1:
+                    answer_key = parts[1].split('CONTEXT:')[0].strip()
+                    context = parts[1].split('CONTEXT:')[1].strip()
+                    
+                    # Store the expected answer and context
+                    prog['expected_answer'] = answer_key
+                    prog['question_context'] = context
                 
-                # Store the expected answer for next interaction
-                if correct_answer:
-                    st.session_state.learning_progression['expected_answer'] = correct_answer
-                
-                return student_response
+                return teaching_response
             
             return response
             
         except Exception as e:
             return f"Error: {str(e)}"
+
+    def _check_answer(self, student_answer: str, expected_answer: str) -> bool:
+        # Add logic to compare answers intelligently
+        student_answer = student_answer.lower().strip()
+        expected_answer = expected_answer.lower().strip()
+        return student_answer in expected_answer or expected_answer in student_answer
+
+    def _get_current_subtopic(self) -> str:
+        for topic in st.session_state.learning_progression['subtopics']:
+            if not topic['completed']:
+                return topic['name']
+        return "review"  # If all topics are completed
+
+    def _get_next_uncompleted_subtopic(self) -> str:
+        found_current = False
+        for topic in st.session_state.learning_progression['subtopics']:
+            if found_current and not topic['completed']:
+                return topic['name']
+            if not topic['completed']:
+                found_current = True
+        return "final_review"  # If all topics are completed
 
 
 
