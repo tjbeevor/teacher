@@ -185,16 +185,16 @@ def main():
 
     if "api_key" not in st.session_state:
         try:
-            # Access secrets with the correct path
-            api_key = st.secrets["secrets"]["google_gemini"]["api_key"] 
+            # Access the API key directly from st.secrets
+            api_key = st.secrets["google_gemini"]["api_key"]  
         except KeyError:
             # Handle the KeyError with a helpful error message
-            st.error("API key not found. Check your secrets file and path.")
+            st.error("API key not found in Streamlit secrets.")
             return
 
         st.session_state.api_key = api_key
         st.session_state.tutor = AITutor(api_key)
-        st.experimental_rerun()
+        st.experimental_rerun() 
     else:
         # Initialize session state variables
         if 'quiz_active' not in st.session_state:
