@@ -105,40 +105,44 @@ def cache_response(self, prompt, response):
         self.cache[prompt] = response
 
 class APIClient:
-def __init__(self, api_key):
+    def __init__(self, api_key: str):
         self.api_key = api_key
         self.cache = CachingSystem()
         self.executor = ThreadPoolExecutor(max_workers=4)
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel('gemini-pro')
 
-def generate_content(self, prompt):
+    def generate_content(self, prompt: str) -> str:
         if not prompt:
             return "I apologize, but I need a prompt to generate a response."
         
+        # Check cache first
         cached_response = self.cache.get_cached_response(prompt)
         if cached_response:
             return cached_response
 
         try:
+            # Execute in thread pool
             response = self.executor.submit(
                 lambda: self.model.generate_content(prompt)
             ).result()
 
+            # Verify response is not None and has text
             if response and response.text:
+                # Cache the response
                 self.cache.cache_response(prompt, response.text)
                 return response.text
             else:
-                return "I apologize, but I couldn't generate a proper response."
+                return "I apologize, but I couldn't generate a proper response. Let me try a different approach to help you understand variables."
         except Exception as e:
             st.error(f"API Error: {str(e)}")
-            return "I apologize for the error."
+            return "I apologize, but I encountered an error. Let me try explaining variables in a different way."
 
 class QuizGenerator:
-def __init__(self, api_client):
+    def __init__(self, api_client):
         self.api_client = api_client
 
-def generate_quiz(self, subject, topic, difficulty, num_questions=5):
+    def generate_quiz(self, subject, topic, difficulty, num_questions=5):
         prompt = f"""Create a quiz about {topic} in {subject} at {difficulty} level.
                      Generate exactly {num_questions} questions based on what we've discussed."""
         
@@ -150,10 +154,10 @@ def generate_quiz(self, subject, topic, difficulty, num_questions=5):
             return None
 
 class ProgressTracker:
-def __init__(self):
+    def __init__(self):
         self.history_file = "progress_history.json"
 
-def load_history(self):
+    def load_history(self):
         if not os.path.exists(self.history_file):
             return []
         try:
@@ -163,7 +167,7 @@ def load_history(self):
             st.warning(f"Could not load progress history: {e}")
             return []
 
-def save_progress(self, user, subject, topic, quiz_score, timestamp=None):
+    def save_progress(self, user, subject, topic, quiz_score, timestamp=None):
         history = self.load_history()
         history.append({
             'user': user,
@@ -179,12 +183,12 @@ def save_progress(self, user, subject, topic, quiz_score, timestamp=None):
             st.warning(f"Could not save progress: {e}")
 
 class AITutor:
-def __init__(self):
+    def __init__(self):
         self.api_client = APIClient(st.secrets["GOOGLE_API_KEY"])
         self.quiz_generator = QuizGenerator(self.api_client)
         self.progress_tracker = ProgressTracker()
 
-def initialize_session(self, subject, level, prerequisites, topic):
+    def initialize_session(self, subject, level, prerequisites, topic):
         prompt = f"""
         You are a friendly and encouraging tutor teaching {subject} at {level} level.
         The student's background is: {prerequisites}
@@ -196,14 +200,14 @@ def initialize_session(self, subject, level, prerequisites, topic):
         Keep your responses natural and conversational.
         """
         
-return self.api_client.generate_content(prompt)
+    return self.api_client.generate_content(prompt)
 
-def send_message(self, message):
-prompt = f"""
-The student's response was "{message}". Continue the conversation naturally.
-Provide feedback and introduce new concepts if appropriate.
-"""
-return self.api_client.generate_content(prompt)
+    def send_message(self, message):
+    prompt = f"""
+    The student's response was "{message}". Continue the conversation naturally.
+    Provide feedback and introduce new concepts if appropriate.
+    """
+    return self.api_client.generate_content(prompt)
 
 def main():
 if 'tutor' not in st.session_state:
