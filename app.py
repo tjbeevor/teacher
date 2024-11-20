@@ -207,6 +207,15 @@ class AITutor:
         self.topics = []
         self.current_topic_index = 0
 
+    class AITutor:
+    def __init__(self):
+        self.api_client = APIClient(st.secrets["GOOGLE_API_KEY"])
+        self.quiz_generator = QuizGenerator(self.api_client)
+        self.progress_tracker = ProgressTracker()
+        self.current_topic = None
+        self.topics = []
+        self.current_topic_index = 0
+
     def initialize_session(self, subject, level, prerequisites, topic):
         prompt = f"""
         You are a friendly and encouraging tutor teaching {subject} at {level} level.
@@ -214,10 +223,14 @@ class AITutor:
         Main topic: {topic}
 
         Please provide a list of 5 key subtopics to cover for {topic} in {subject}.
-        Format your response as a Python list of strings.
+        Format your response as a valid JSON string representing a list of strings.
         """
         response = self.api_client.generate_content(prompt)
-        self.topics = eval(response)  # Convert string representation of list to actual list
+        try:
+            self.topics = json.loads(response)
+        except json.JSONDecodeError:
+            st.error("Failed to parse the response from the AI. Please try again.")
+            return "I'm sorry, but I encountered an error. Let's try again."
         self.current_topic_index = 0
         self.current_topic = self.topics[self.current_topic_index]
         
@@ -231,10 +244,14 @@ class AITutor:
         2. Give 1-2 examples.
         3. Ask a question to test understanding.
 
-        Format your response as a Python dictionary with keys: 'lesson', 'examples', and 'question'.
+        Format your response as a valid JSON string with keys: 'lesson', 'examples', and 'question'.
         """
         response = self.api_client.generate_content(prompt)
-        return eval(response)  # Convert string representation of dict to actual dict
+        try:
+            return json.loads(response)
+        except json.JSONDecodeError:
+            st.error("Failed to parse the lesson content. Please try again.")
+            return {"lesson": "I'm sorry, but I encountered an error. Let's try again.", "examples": "", "question": ""}
 
     def evaluate_answer(self, question, answer):
         prompt = f"""
@@ -244,10 +261,14 @@ class AITutor:
         Evaluate the student's answer. Provide feedback and determine if the answer is correct, partially correct, or incorrect.
         If partially correct or incorrect, provide a brief explanation or hint.
 
-        Format your response as a Python dictionary with keys: 'evaluation' (string: 'correct', 'partially_correct', or 'incorrect'), 'feedback' (string), and 'move_on' (boolean).
+        Format your response as a valid JSON string with keys: 'evaluation' (string: 'correct', 'partially_correct', or 'incorrect'), 'feedback' (string), and 'move_on' (boolean).
         """
         response = self.api_client.generate_content(prompt)
-        return eval(response)  # Convert string representation of dict to actual dict
+        try:
+            return json.loads(response)
+        except json.JSONDecodeError:
+            st.error("Failed to parse the evaluation. Please try again.")
+            return {"evaluation": "incorrect", "feedback": "I'm sorry, but I encountered an error. Let's try again.", "move_on": False}
 
     def move_to_next_topic(self):
         self.current_topic_index += 1
