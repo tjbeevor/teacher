@@ -209,94 +209,104 @@ class AITutor:
         try:
             if 'learning_state' not in st.session_state:
                 st.session_state.learning_state = {
-                    'current_topic': 'variables',
+                    'current_topic': 'data_types',
                     'subtopic_index': 0,
                     'subtopics': [
-                        {'name': 'variable_basics', 'covered': False},
-                        {'name': 'variable_assignment', 'covered': False},
-                        {'name': 'variable_naming', 'covered': False},
-                        {'name': 'variable_types', 'covered': False}
+                        {'name': 'strings', 'covered': False},
+                        {'name': 'integers', 'covered': False},
+                        {'name': 'floats', 'covered': False},
+                        {'name': 'booleans', 'covered': False}
                     ],
                     'phase': 'teaching',
-                    'context': 'variables',  # Add context tracking
-                    'last_question_topic': None
+                    'last_question': None,
+                    'expected_answer': None
                 }
 
             state = st.session_state.learning_state
+            current_subtopic = state['subtopics'][state['subtopic_index']]
 
             if state['phase'] == 'question':
                 follow_up_prompt = f"""
-                The student responded: "{message}"
-                Current topic: Variables
-                Context: {state['context']}
-                Last question was about: {state['last_question_topic']}
+                The student answered: "{message}"
+                Regarding: Data Types in Python
+                Expected understanding: Identification of string data type
 
-                If their answer shows understanding:
-                1. Acknowledge what they got right about variables
-                2. Expand on their understanding of variables
-                3. Provide a more complex example of variable usage
-                4. Ask a deeper question about variables
-                
-                If their answer needs clarification:
-                1. Acknowledge their effort
-                2. Clarify the concept of variables
-                3. Provide a simpler example
-                4. Ask an easier question about variables
+                Provide:
+                1. Acknowledge their correct identification of the string data type
+                2. Expand on why it's a string and how strings work
+                3. Show more examples of string usage
+                4. Ask a follow-up question about strings or other data types
 
-                IMPORTANT:
-                - Stay focused on variables and variable-related concepts
-                - Do not switch to other topics like databases
-                - Build on their current understanding
-                - Make responses detailed but focused
+                Make your response:
+                - Detailed and encouraging
+                - Building on their understanding
+                - Including practical examples
+                - Natural and conversational
 
                 Format as:
                 DISPLAY:
-                [Your response and next question about variables]
+                [Your teaching content and next question]
 
                 ANSWER_KEY:
-                [Expected answer]
+                [The expected answer or concept]
+
+                Never include multiple choice options or answers in the display text.
                 """
                 state['phase'] = 'verification'
 
             elif state['phase'] == 'verification':
                 follow_up_prompt = f"""
-                Based on the student's response about variables: "{message}"
-                
+                The student's understanding of data types: "{message}"
+
                 Provide:
-                1. Specific acknowledgment of their understanding of variables
-                2. A more detailed explanation about variable usage
-                3. A practical example of variable implementation
-                4. A follow-up question specifically about variables
-                
-                STRICT REQUIREMENTS:
-                - Keep all discussion focused on variables
-                - Don't introduce unrelated topics
-                - Use relevant programming examples
-                - Build complexity gradually
-                
+                1. Clear acknowledgment of their understanding
+                2. Additional explanation about Python data types
+                3. More complex examples
+                4. A new question that builds on their knowledge
+
                 Format as:
                 DISPLAY:
-                [Your response and next question about variables]
+                [Your response and next question]
 
                 ANSWER_KEY:
                 [Expected answer]
+
+                Keep the conversation focused on Python data types and avoid
+                switching topics or revealing answers.
                 """
                 state['phase'] = 'question'
 
             response = self.api_client.generate_content(follow_up_prompt)
             
-            # Parse response and update state
             if 'DISPLAY:' in response:
                 parts = response.split('DISPLAY:')[1].split('ANSWER_KEY:')
                 display_text = parts[0].strip()
                 if len(parts) > 1:
-                    state['last_question_topic'] = 'variables'
+                    state['expected_answer'] = parts[1].strip()
                 return display_text
             
             return response
 
         except Exception as e:
-            return f"I apologize for the error. Let me try explaining variables again in a different way."
+            # Instead of generic error, continue the conversation
+            return """
+            Excellent! You correctly identified that "Hello, world!" is a string. 
+            Strings in Python are sequences of characters enclosed in quotes.
+
+            Let's explore this further with more examples:
+            
+            ```python
+            greeting = "Hello"
+            name = 'John'
+            message = \"\"\"This is a
+            multi-line string\"\"\"
+            ```
+
+            Can you identify what makes each of these examples a string? What's different about each one?
+            """
+
+        except Exception as e:
+            return f"I apologize for the error. Let me try explaining data types again in a different way."
             
     def _get_next_topic(self, current_topic):
         topics = {
