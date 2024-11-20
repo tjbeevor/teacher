@@ -3,156 +3,34 @@ import google.generativeai as genai
 import pandas as pd
 import plotly.express as px
 from datetime import datetime, timedelta
-from cachetools import TTLCache
-
-class CachingSystem:
-    def __init__(self):
-        self.cache = TTLCache(maxsize=100, ttl=3600)  # 1 hour TTL
-
-    def get_cached_response(self, prompt: str):
-        return self.cache.get(prompt)
-
-    def cache_response(self, prompt: str, response: str):
-        self.cache[prompt] = response
-
-class CachingSystem:
-    def __init__(self):
-        self.cache = {}
-        self.cache_timestamps = {}
-        self.cache_ttl = 3600  # 1 hour
-
-    def _get_cached_response(self, prompt: str):
-        if prompt in self.cache:
-            timestamp = self.cache_timestamps.get(prompt)
-            if timestamp and datetime.now() - timestamp < timedelta(seconds=self.cache_ttl):
-                return self.cache.get(prompt)
-            else:
-                # Remove expired cache entry
-                del self.cache[prompt]
-                del self.cache_timestamps[prompt]
-        return None
-
-    def cache_response(self, prompt: str, response: str):
-        self.cache[prompt] = response
-        self.cache_timestamps[prompt] = datetime.now()
 import json
 import os
-from functools import lru_cache
+from cachetools import TTLCache
 from concurrent.futures import ThreadPoolExecutor
 
 # Configuration
 os.environ["STREAMLIT_SERVER_WATCH_PATCHING"] = "false"
 
-# Page configuration
+# Streamlit Page Config
 st.set_page_config(
     page_title="AI Tutor | Interactive Learning",
     page_icon="🎓",
     layout="wide",
     initial_sidebar_state="expanded",
-    menu_items={"Get help": None, "Report a bug": None, "About": None}
 )
 
-# Initialize session state
-if 'messages' not in st.session_state:
-    st.session_state.messages = []
-if 'quiz_active' not in st.session_state:
-    st.session_state.quiz_active = False
-if 'current_quiz' not in st.session_state:
-    st.session_state.current_quiz = None
-if 'quiz_score' not in st.session_state:
-    st.session_state.quiz_score = 0
-if 'current_question' not in st.session_state:
-    st.session_state.current_question = 0
-
-# Apply CSS styles
-st.markdown("""
-<style>
-.main {background-color: #f8f9fa;}
-.main-header {
-    font-family: 'Helvetica Neue', sans-serif;
-    color: #1E3A8A;
-    padding: 1rem 0;
-    text-align: center;
-    background: linear-gradient(90deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 10px;
-    margin-bottom: 2rem;
-}
-.stButton>button {
-    width: 100%;
-    border-radius: 8px;
-    background-color: #1E3A8A;
-    color: white;
-    font-weight: 500;
-    padding: 0.5rem 1rem;
-    transition: all 0.3s ease;
-}
-.stButton>button:hover {
-    background-color: #2563EB;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-.chat-container {
-    background-color: white;
-    border-radius: 10px;
-    padding: 1.5rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    margin-bottom: 1rem;
-}
-.stChat {border-radius: 8px; margin-bottom: 1rem;}
-.stTextInput>div>div>input {border-radius: 8px;}
-.quiz-container {
-    background-color: white;
-    border-radius: 10px;
-    padding: 1.5rem;
-    margin-top: 1rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-.stSelectbox {margin-bottom: 1rem;}
-.stRadio > label {
-    background-color: #f8fafc;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    margin-bottom: 0.5rem;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# Header
-st.markdown("""
-<div class="main-header">
-    <h1>🎓 Interactive AI Tutor</h1>
-    <p style='color: #475569; font-size: 1.1em;'>Personalized Learning Experience</p>
-</div>
-""", unsafe_allow_html=True)
-
-
-class AITutor:
-    def __init__(self):
-        if 'GOOGLE_API_KEY' not in st.secrets:
-            st.error("🔑 GOOGLE_API_KEY not found in secrets!")
-            st.stop()
-        self.api_client = APIClient(st.secrets['GOOGLE_API_KEY'])
-        self.quiz_generator = QuizGenerator(self.api_client)
-        self.progress_tracker = ProgressTracker()
-        self.current_subject = None
-        self.current_topic = None
-
-
-
+# Caching System
 class CachingSystem:
     def __init__(self):
-        self.cache = {}
-        self.cache_ttl = 3600  # 1 hour
-        self._get_cached_response = lru_cache(maxsize=100)(self._get_cached_response)
-
-    def _get_cached_response(self, prompt: str):
-        return self.cache.get(prompt)
+        self.cache = TTLCache(maxsize=100, ttl=3600)  # 1-hour TTL
 
     def get_cached_response(self, prompt: str):
-        return self._get_cached_response(prompt)
+        return self.cache.get(prompt)
 
     def cache_response(self, prompt: str, response: str):
         self.cache[prompt] = response
 
+# API Client
 class APIClient:
     def __init__(self, api_key: str):
         self.api_key = api_key
@@ -163,275 +41,89 @@ class APIClient:
 
     def generate_content(self, prompt: str) -> str:
         if not prompt:
-            return "I apologize, but I need a prompt to generate a response."
+            return "I need a prompt to generate a response."
 
-        # Check cache first
         cached_response = self.cache.get_cached_response(prompt)
         if cached_response:
             return cached_response
 
         try:
-            # Execute in thread pool
-            response = self.executor.submit(
-                lambda: self.model.generate_content(prompt)
-            ).result()
-
-            # Verify response is not None and has text
-            if response and response.text:
-                # Cache the response
+            response = self.executor.submit(lambda: self.model.generate_content(prompt)).result()
+            if response and hasattr(response, 'text'):
                 self.cache.cache_response(prompt, response.text)
                 return response.text
-            else:
-                return "I apologize, but I couldn't generate a proper response. Let me try a different approach to help you understand variables."
+            return "I couldn't generate a response."
         except Exception as e:
-            st.error(f"API Error: {str(e)}")
-            return "I apologize, but I encountered an error. Let me try explaining variables in a different way."
+            return f"Error: {str(e)}"
 
+# Quiz Generator
 class QuizGenerator:
     def __init__(self, api_client: APIClient):
         self.api_client = api_client
 
-    def generate_quiz(self, subject: str, topic: str, difficulty: str, num_questions: int = 5) -> dict:
-        prompt = f"""Create a quiz about {topic} in {subject} at {difficulty} level. 
-        Generate exactly {num_questions} questions based on what we've discussed. 
-        Format each question like this:
-        {{
-            "questions": [
-                {{
-                    "question": "Write a clear, focused question about a single concept",
-                    "options": [
-                        "A) First option",
-                        "B) Second option",
-                        "C) Third option",
-                        "D) Fourth option"
-                    ],
-                    "correct_answer": "A) First option",
-                    "explanation": "Brief explanation of why this answer is correct"
-                }}
-            ]
-        }}"""
-
+    def generate_quiz(self, subject, topic, level, num_questions=5):
+        prompt = f"Create a {level} quiz on {topic} in {subject} with {num_questions} questions."
+        response = self.api_client.generate_content(prompt)
         try:
-            response = self.api_client.generate_content(prompt)
             return json.loads(response)
         except Exception as e:
-            st.error(f"Failed to generate quiz: {str(e)}")
+            st.error(f"Failed to parse quiz response: {str(e)}")
             return None
 
-class ProgressTracker:
-    def __init__(self):
-        self.history_file = "progress_history.json"
-
-    def load_history(self):
-        if not os.path.exists(self.history_file):
-            return []
-        try:
-            with open(self.history_file, 'r') as f:
-                return json.load(f)
-        except Exception as e:
-            st.warning(f"Could not load progress history: {e}")
-            return []
-
-    def save_progress(self, user, subject, topic, quiz_score, timestamp=None):
-        history = self.load_history()
-        history.append({
-            'user': user,
-            'subject': subject,
-            'topic': topic,
-            'score': quiz_score,
-            'timestamp': timestamp or datetime.now().isoformat()
-        })
-        try:
-            with open(self.history_file, 'w') as f:
-                json.dump(history, f)
-        except Exception as e:
-            st.warning(f"Could not save progress: {e}")
-
-def main():
-    if 'tutor' not in st.session_state:
-        st.session_state.tutor = AITutor()
-    # Rest of main() function code...
-
+# AITutor Class
 class AITutor:
-    def __init__(self):
-        if 'GOOGLE_API_KEY' not in st.secrets:
-            st.error("🔑 GOOGLE_API_KEY not found in secrets!")
-            st.stop()
-        self.api_client = APIClient(st.secrets['GOOGLE_API_KEY'])
-        self.quiz_generator = QuizGenerator(self.api_client)
-        self.progress_tracker = ProgressTracker()
-        self.current_subject = None
-        self.current_topic = None
+    def __init__(self, api_client: APIClient):
+        self.api_client = api_client
+        self.quiz_generator = QuizGenerator(api_client)
 
-    def initialize_session(self, subject: str, level: str, prerequisites: str, topic: str) -> str:
-        self.current_subject = subject
-        self.current_topic = topic
-        prompt = f"""As an AI tutor, create an introductory message for a {level} level student 
-        learning {topic} in {subject}. Their background: {prerequisites}"""
+    def initialize_session(self, subject, level, prerequisites, topic):
+        prompt = f"Introductory message for {level} {subject} on {topic}. Prerequisites: {prerequisites}"
         return self.api_client.generate_content(prompt)
 
-    def send_message(self, message: str) -> str:
-        prompt = f"""As a tutor teaching {self.current_topic} in {self.current_subject}, 
-        respond to: {message}"""
+    def send_message(self, message):
+        prompt = f"Respond as a tutor for {message}"
         return self.api_client.generate_content(prompt)
 
-
-
-
-
-
-    
+# Main Function
+def main():
+    # Initialize Session State
     if 'tutor' not in st.session_state:
-        st.session_state.tutor = AITutor()
+        if 'GOOGLE_API_KEY' not in st.secrets:
+            st.error("Missing GOOGLE_API_KEY in secrets!")
+            return
+        st.session_state.tutor = AITutor(APIClient(st.secrets['GOOGLE_API_KEY']))
 
-    chat_col, viz_col = st.columns([2, 1])
+    st.title("🎓 Interactive AI Tutor")
 
+    # Sidebar Inputs
     with st.sidebar:
-        st.markdown("""
-        <div style='text-align: center; padding-bottom: 1rem;'>
-            <h3 style='color: #1E3A8A;'>Session Configuration</h3>
-        </div>
-        """, unsafe_allow_html=True)
+        st.header("Session Configuration")
+        user_name = st.text_input("Your Name")
+        subject = st.selectbox("Subject", ["Math", "Science", "History"])
+        level = st.selectbox("Level", ["Beginner", "Intermediate", "Advanced"])
+        topic = st.text_input("Topic")
+        prerequisites = st.text_area("Prerequisites")
 
-        user_name = st.text_input("👤 Your Name")
-        subjects = [
-            "Python Programming",
-            "Mathematics",
-            "Physics",
-            "Chemistry",
-            "Biology",
-            "History",
-            "Literature",
-            "Economics"
-        ]
-        subject = st.selectbox("📚 Select Subject", subjects)
-        levels = ["Beginner", "Intermediate", "Advanced"]
-        level = st.selectbox("📊 Select Level", levels)
-        topic = st.text_input("🎯 Specific Topic")
-        prerequisites = st.text_area("🔍 Your Background/Prerequisites")
-
-        if st.button("🚀 Start New Session"):
+        if st.button("Start Session"):
             if not topic or not prerequisites:
-                st.error("⚠️ Please fill in both Topic and Prerequisites")
+                st.warning("Please provide topic and prerequisites.")
             else:
-                with st.spinner("🔄 Initializing your session..."):
-                    response = st.session_state.tutor.initialize_session(
-                        subject, level, prerequisites, topic
-                    )
-                    st.session_state.messages = []
-                    st.session_state.messages.append({"role": "assistant", "content": response})
-                st.success("✨ Session started!")
-
-        if st.button("🔄 Reset Session"):
-            st.session_state.messages = []
-            st.session_state.quiz_active = False
-            st.session_state.current_quiz = None
-            st.session_state.quiz_score = 0
-            st.session_state.current_question = 0
-            st.experimental_rerun()
-
-    with chat_col:
-        st.markdown("""
-        <div class='chat-container'>
-            <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>💬 Learning Conversation</h3>
-        </div>
-        """, unsafe_allow_html=True)
-
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
-
-        if prompt := st.chat_input("💭 Type your response here..."):
-            with st.chat_message("user"):
-                st.markdown(prompt)
-            st.session_state.messages.append({"role": "user", "content": prompt})
-
-            with st.chat_message("assistant"):
-                with st.spinner("🤔 Thinking..."):
-                    response = st.session_state.tutor.send_message(prompt)
-                st.markdown(response)
+                st.session_state.messages = []
+                response = st.session_state.tutor.initialize_session(subject, level, prerequisites, topic)
                 st.session_state.messages.append({"role": "assistant", "content": response})
+                st.success("Session Started!")
 
-    with viz_col:
-        st.markdown("""
-        <div class='chat-container'>
-            <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>📈 Learning Progress</h3>
-        </div>
-        """, unsafe_allow_html=True)
+    # Chat Interface
+    for message in st.session_state.get('messages', []):
+        with st.chat_message(message['role']):
+            st.markdown(message['content'])
 
-        if st.button("📝 Take Quiz"):
-            if not topic:
-                st.error("⚠️ Please start a session first")
-            else:
-                st.session_state.quiz_active = True
-                with st.spinner("⚙️ Generating quiz..."):
-                    quiz_data = st.session_state.tutor.quiz_generator.generate_quiz(
-                        subject, topic, level
-                    )
-                    if quiz_data:
-                        st.session_state.current_quiz = quiz_data
-                        st.session_state.quiz_score = 0
-                        st.session_state.current_question = 0
+    if prompt := st.chat_input("Type your message..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        response = st.session_state.tutor.send_message(prompt)
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        with st.chat_message("assistant"):
+            st.markdown(response)
 
-        if st.session_state.quiz_active and st.session_state.current_quiz:
-            quiz_data = st.session_state.current_quiz
-            current_q = st.session_state.current_question
-
-            if current_q < len(quiz_data['questions']):
-                question = quiz_data['questions'][current_q]
-                st.subheader(f"Question {current_q + 1}")
-                st.write(question['question'])
-                answer = st.radio(
-                    "Select your answer:",
-                    question['options'],
-                    key=f"q_{current_q}"
-                )
-
-                if st.button("Submit Answer", key=f"submit_{current_q}"):
-                    if answer == question['correct_answer']:
-                        st.session_state.quiz_score += 1
-                        st.success("✅ Correct!")
-                    else:
-                        st.error(f"❌ Incorrect. {question['explanation']}")
-
-                    if current_q < len(quiz_data['questions']) - 1:
-                        st.session_state.current_question += 1
-                        st.experimental_rerun()
-                    else:
-                        final_score = (st.session_state.quiz_score / len(quiz_data['questions'])) * 100
-                        st.session_state.tutor.progress_tracker.save_progress(
-                            user_name, subject, topic, final_score
-                        )
-                        st.session_state.quiz_active = False
-                        st.success(f"🎉 Quiz completed! Score: {final_score}%")
-
-        try:
-            progress_data = st.session_state.tutor.progress_tracker.load_history()
-            if progress_data and len(progress_data) > 0:
-                df = pd.DataFrame(progress_data)
-                fig = px.line(
-                    df, 
-                    x='timestamp', 
-                    y='score', 
-                    color='subject',
-                    title='Performance Over Time',
-                    template='seaborn'
-                )
-                fig.update_layout(
-                    plot_bgcolor='white',
-                    paper_bgcolor='white',
-                    font={'color': '#1E3A8A'},
-                    title={'font': {'size': 20}},
-                    xaxis={'gridcolor': '#E2E8F0'},
-                    yaxis={'gridcolor': '#E2E8F0'}
-                )
-                st.plotly_chart(fig, use_container_width=True)
-        except Exception as e:
-            st.warning("No progress data available yet.")
-
-    if __name__ == "__main__":
-        try:
-            main()
-        except Exception as e:
-            st.error(f"An error occurred: {str(e)}")
-            st.error("Please refresh the page and try again.")
+if __name__ == "__main__":
+    main()
