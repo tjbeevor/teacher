@@ -340,13 +340,7 @@ Let's start with {topics[0]}!"""
                 current_topic = st.session_state.topics[st.session_state.current_topic_index]
                 lesson = st.session_state.tutor.generate_lesson(current_topic, level)
                 
-                # Debug print
-                st.write("Debug - Raw lesson content:", lesson)
-                
                 lesson_message = f"""# {current_topic}
-
-# Replace the duplicated lesson_message section (around line 392) with this:
-lesson_message = f"""# {current_topic}
 
 ## Learning Objectives
 {lesson.get('objectives', '')}
@@ -363,11 +357,11 @@ lesson_message = f"""# {current_topic}
 ## Practice Question
 {lesson.get('practice', '')}"""
 
-st.session_state.messages.append({"role": "assistant", "content": lesson_message})
-st.session_state.last_question = lesson['practice']
-st.session_state.teaching_state = 'wait_for_answer'
-st.session_state.lesson_generated = True
-st.rerun()
+                st.session_state.messages.append({"role": "assistant", "content": lesson_message})
+                st.session_state.last_question = lesson['practice']
+                st.session_state.teaching_state = 'wait_for_answer'
+                st.session_state.lesson_generated = True
+                st.rerun()
 
         elif st.session_state.teaching_state == 'wait_for_answer':
             answer = st.chat_input("Your answer...")
@@ -386,7 +380,7 @@ st.rerun()
                     else 'feedback-negative'
                 )
 
-                feedback = f"""<div class='feedback-box {feedback_class}'>
+                feedback_message = f"""<div class='feedback-box {feedback_class}'>
 
 ### Understanding
 {evaluation['understanding']}
@@ -395,8 +389,10 @@ st.rerun()
 {evaluation['feedback']}
 
 ### Next Steps
-{evaluation['next_steps']}</div>"""
-                st.session_state.messages.append({"role": "assistant", "content": feedback})
+{evaluation['next_steps']}
+</div>"""
+
+                st.session_state.messages.append({"role": "assistant", "content": feedback_message})
                 
                 if evaluation['move_on']:
                     st.session_state.current_topic_index += 1
@@ -424,3 +420,10 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         st.error(f"Error during startup: {str(e)}")
+
+
+
+
+
+
+
