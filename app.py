@@ -116,27 +116,23 @@ class APIClient:
         if not prompt:
             return "I apologize, but I need a prompt to generate a response."
         
-        # Check cache first
         cached_response = self.cache.get_cached_response(prompt)
         if cached_response:
             return cached_response
 
         try:
-            # Execute in thread pool
             response = self.executor.submit(
                 lambda: self.model.generate_content(prompt)
             ).result()
 
-            # Verify response is not None and has text
             if response and response.text:
-                # Cache the response
                 self.cache.cache_response(prompt, response.text)
                 return response.text
             else:
-                return "I apologize, but I couldn't generate a proper response. Let me try a different approach to help you understand variables."
+                return "I apologize, but I couldn't generate a proper response."
         except Exception as e:
             st.error(f"API Error: {str(e)}")
-            return "I apologize, but I encountered an error. Let me try explaining variables in a different way."
+            return "I apologize, but I encountered an error."
 
 class QuizGenerator:
     def __init__(self, api_client: APIClient):
@@ -207,15 +203,6 @@ class AITutor:
         self.topics = []
         self.current_topic_index = 0
 
-    class AITutor:
-        def __init__(self):
-            self.api_client = APIClient(st.secrets["GOOGLE_API_KEY"])
-            self.quiz_generator = QuizGenerator(self.api_client)
-            self.progress_tracker = ProgressTracker()
-            self.current_topic = None
-            self.topics = []
-            self.current_topic_index = 0
-
     def initialize_session(self, subject, level, prerequisites, topic):
         prompt = f"""
         You are a friendly and encouraging tutor teaching {subject} at {level} level.
@@ -234,18 +221,16 @@ class AITutor:
             self.current_topic = self.topics[self.current_topic_index]
             return f"Great! Let's start our lesson on {topic}. We'll cover these subtopics: {', '.join(self.topics)}. Let's begin with {self.current_topic}."
         except json.JSONDecodeError as e:
-                st.error(f"Failed to parse the response from the AI. Error: {str(e)}")
-                return "I'm sorry, but I encountered an error. Let's try again."
+            st.error(f"Failed to parse the response from the AI. Error: {str(e)}")
+            return "I'm sorry, but I encountered an error. Let's try again."
         except ValueError as e:
             st.error(f"Invalid response format from the AI. Error: {str(e)}")
             return "I'm sorry, but I received an invalid response. Let's try again."
 
-    
-
     def teach_topic(self):
         prompt = f"""
         Teach the subtopic: {self.current_topic}
-    
+        
         1. Provide a brief lesson (2-3 sentences).
         2. Give 1-2 examples.
         3. Ask a question to test understanding.
@@ -264,8 +249,6 @@ class AITutor:
         except ValueError as e:
             st.error(f"Invalid lesson content format. Error: {str(e)}")
             return {"lesson": "I'm sorry, but I received an invalid response. Let's try again.", "examples": "", "question": ""}
-        
-    
 
     def evaluate_answer(self, question, answer):
         prompt = f"""
@@ -290,9 +273,6 @@ class AITutor:
             st.error(f"Invalid evaluation format. Error: {str(e)}")
             return {"evaluation": "incorrect", "feedback": "I'm sorry, but I received an invalid response. Let's try again.", "move_on": False}
 
-
-    
-
     def move_to_next_topic(self):
         self.current_topic_index += 1
         if self.current_topic_index < len(self.topics):
@@ -309,48 +289,7 @@ def main():
     chat_col, viz_col = st.columns([2, 1])
 
     with st.sidebar:
-        st.markdown("""
-        <div style='text-align: center; padding-bottom: 1rem;'>
-            <h3 style='color: #1E3A8A;'>Session Configuration</h3>
-        </div>
-        """, unsafe_allow_html=True)
-
-        user_name = st.text_input("👤 Your Name")
-        subjects = [
-            "Python Programming",
-            "Mathematics",
-            "Physics",
-            "Chemistry",
-            "Biology",
-            "History",
-            "Literature",
-            "Economics"
-        ]
-        subject = st.selectbox("📚 Select Subject", subjects)
-        levels = ["Beginner", "Intermediate", "Advanced"]
-        level = st.selectbox("📊 Select Level", levels)
-        topic = st.text_input("🎯 Specific Topic")
-        prerequisites = st.text_area("🔍 Your Background/Prerequisites")
-
-        if st.button("🚀 Start New Session"):
-            if not topic or not prerequisites:
-                st.error("⚠️ Please fill in both Topic and Prerequisites")
-            else:
-                with st.spinner("🔄 Initializing your session..."):
-                    response = st.session_state.tutor.initialize_session(
-                        subject, level, prerequisites, topic
-                    )
-                    st.session_state.messages = []
-                    st.session_state.messages.append({"role": "assistant", "content": response})
-                st.success("✨ Session started!")
-
-        if st.button("🔄 Reset Session"):
-            st.session_state.messages = []
-            st.session_state.quiz_active = False
-            st.session_state.current_quiz = None
-            st.session_state.quiz_score = 0
-            st.session_state.current_question = 0
-            st.experimental_rerun()
+        # ... (keep the existing sidebar code)
 
     with chat_col:
         st.markdown("""
@@ -398,8 +337,16 @@ def main():
         elif st.session_state.teaching_state == 'finished':
             st.success("🎉 Congratulations! You've completed all topics in this lesson.")
             if st.button("📝 Take Quiz"):
-                # Implement quiz functionality here
-                pass
+                st.session_state.quiz_active = True
+                with st.spinner("⚙️ Generating quiz..."):
+                    quiz_data = st.session_state.tutor.quiz_generator.generate_quiz(
+                        subject, topic, level
+                    )
+                    if quiz_data:
+                        st.session_state.current_quiz = quiz_data
+                        st.session_state.quiz_score = 0
+                        st.session_state.current_question = 0
+                st.experimental_rerun()
 
     with viz_col:
         st.markdown("""
@@ -407,6 +354,38 @@ def main():
             <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>📈 Learning Progress</h3>
         </div>
         """, unsafe_allow_html=True)
+
+        if st.session_state.quiz_active and st.session_state.current_quiz:
+            quiz_data = st.session_state.current_quiz
+            current_q = st.session_state.current_question
+
+            if current_q < len(quiz_data['questions']):
+                question = quiz_data['questions'][current_q]
+                st.subheader(f"Question {current_q + 1}")
+                st.write(question['question'])
+                answer = st.radio(
+                    "Select your answer:",
+                    question['options'],
+                    key=f"q_{current_q}"
+                )
+
+                if st.button("Submit Answer", key=f"submit_{current_q}"):
+                    if answer == question['correct_answer']:
+                        st.session_state.quiz_score += 1
+                        st.success("✅ Correct!")
+                    else:
+                        st.error(f"❌ Incorrect. {question['explanation']}")
+
+                    if current_q < len(quiz_data['questions']) - 1:
+                        st.session_state.current_question += 1
+                        st.experimental_rerun()
+                    else:
+                        final_score = (st.session_state.quiz_score / len(quiz_data['questions'])) * 100
+                        st.session_state.tutor.progress_tracker.save_progress(
+                            user_name, subject, topic, final_score
+                        )
+                        st.session_state.quiz_active = False
+                        st.success(f"🎉 Quiz completed! Score: {final_score}%")
 
         try:
             progress_data = st.session_state.tutor.progress_tracker.load_history()
