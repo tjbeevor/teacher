@@ -2,7 +2,39 @@ import streamlit as st
 import google.generativeai as genai
 import pandas as pd
 import plotly.express as px
-from datetime import datetime
+from datetime import datetime, timedelta
+from cachetools import TTLCache
+
+class CachingSystem:
+    def __init__(self):
+        self.cache = TTLCache(maxsize=100, ttl=3600)  # 1 hour TTL
+
+    def get_cached_response(self, prompt: str):
+        return self.cache.get(prompt)
+
+    def cache_response(self, prompt: str, response: str):
+        self.cache[prompt] = response
+
+class CachingSystem:
+    def __init__(self):
+        self.cache = {}
+        self.cache_timestamps = {}
+        self.cache_ttl = 3600  # 1 hour
+
+    def _get_cached_response(self, prompt: str):
+        if prompt in self.cache:
+            timestamp = self.cache_timestamps.get(prompt)
+            if timestamp and datetime.now() - timestamp < timedelta(seconds=self.cache_ttl):
+                return self.cache.get(prompt)
+            else:
+                # Remove expired cache entry
+                del self.cache[prompt]
+                del self.cache_timestamps[prompt]
+        return None
+
+    def cache_response(self, prompt: str, response: str):
+        self.cache[prompt] = response
+        self.cache_timestamps[prompt] = datetime.now()
 import json
 import os
 from functools import lru_cache
