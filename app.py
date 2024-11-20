@@ -15,60 +15,19 @@ genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 # Add custom CSS
 st.markdown("""
 <style>
-.main-content h1 {
-    font-size: 1.8rem;
-    margin-bottom: 1rem;
-}
-.main-content h2 {
-    font-size: 1.4rem;
-    margin-top: 1.5rem;
-    margin-bottom: 0.8rem;
-    color: #1E88E5;
-}
-.main-content h3 {
-    font-size: 1.2rem;
-    margin-top: 1rem;
-    margin-bottom: 0.5rem;
-    color: #43A047;
-}
-.main-content p, .stMarkdown p {
-    font-size: 1rem;
-    line-height: 1.5;
-    margin-bottom: 1rem;
-}
-.main-content pre {
-    background-color: #f8f9fa;
-    padding: 1rem;
-    border-radius: 4px;
-    margin: 1rem 0;
-}
-.main-content code {
-    font-size: 0.9rem;
-}
-.section-divider {
-    margin: 2rem 0;
-    border-top: 1px solid #e0e0e0;
-}
-.feedback-box {
-    padding: 1rem;
-    border-radius: 4px;
-    margin: 1rem 0;
-    background-color: #f8f9fa;
-}
-.feedback-positive {
-    border-left: 4px solid #43A047;
-}
-.feedback-partial {
-    border-left: 4px solid #FB8C00;
-}
-.feedback-negative {
-    border-left: 4px solid #E53935;
-}
-.stButton button {
-    width: 100%;
-    background-color: #1E88E5;
-    color: white;
-}
+.main-content h1 { font-size: 1.8rem; margin-bottom: 1rem; }
+.main-content h2 { font-size: 1.4rem; margin-top: 1.5rem; margin-bottom: 0.8rem; color: #1E88E5; }
+.main-content h3 { font-size: 1.2rem; margin-top: 1rem; margin-bottom: 0.5rem; color: #43A047; }
+.main-content p, .stMarkdown p { font-size: 1rem; line-height: 1.5; margin-bottom: 1rem; }
+pre { background-color: #f8f9fa; padding: 1rem; border-radius: 4px; margin: 1rem 0; }
+code { font-size: 0.9rem; }
+.feedback-box { padding: 1rem; border-radius: 4px; margin: 1rem 0; background-color: #f8f9fa; }
+.feedback-positive { border-left: 4px solid #43A047; }
+.feedback-partial { border-left: 4px solid #FB8C00; }
+.feedback-negative { border-left: 4px solid #E53935; }
+.stButton button { width: 100%; background-color: #1E88E5; color: white; }
+.topic-list { padding-left: 1.5rem; }
+.topic-item { margin-bottom: 0.5rem; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -94,32 +53,40 @@ class AITutor:
         self.max_retries = 3
 
     def initialize_session(self, subject, level, prerequisites, topic):
-        prompt = f"""
-        As a tutor teaching {subject} at {level} level, create a well-structured learning path.
+        prompt = f"""As an expert {subject} tutor teaching at {level} level, create a structured learning path for {topic}.
         Student background: {prerequisites}
-        Topic: {topic}
 
-        Provide exactly 5 key subtopics that progressively build understanding.
-        Format as:
-        1. [Basic concept/foundation]
-        2. [Core principles]
-        3. [Advanced concepts]
-        4. [Practical applications]
-        5. [Integration and synthesis]
-        """
+        Break down {topic} into exactly 5 sequential subtopics that build progressively.
+        Each subtopic should be clear and specific.
+        Format your response exactly like this:
+        1. (Basic Concept) - Brief description
+        2. (Fundamental Principle) - Brief description
+        3. (Core Mechanism) - Brief description
+        4. (Advanced Application) - Brief description
+        5. (Integration) - Brief description
+
+        Make the subtopics specific to {topic} following this pattern of progressive complexity."""
+
         try:
             response = self.api_client.generate_content(prompt)
-            if response:
-                topics = [line.split('. ')[1].strip() 
-                         for line in response.split('\n') 
-                         if line.strip() and line[0].isdigit()]
-                if len(topics) == 5:
-                    self.topics = topics
-                    self.current_topic_index = 0
-                    self.current_topic = self.topics[self.current_topic_index]
-                    return f"""# Let's study {topic}!
+            if not response or not response.text:
+                raise ValueError("No response generated")
 
-Below is your learning path:
+            lines = [line.strip() for line in response.text.split('\n') if line.strip()]
+            topics = []
+            
+            for line in lines:
+                if line[0].isdigit() and '. ' in line:
+                    topic_text = line.split('. ')[1].split(' - ')[0].strip()
+                    topics.append(topic_text)
+
+            if len(topics) == 5:
+                self.topics = topics
+                self.current_topic_index = 0
+                self.current_topic = self.topics[self.current_topic_index]
+                return f"""# 📚 Let's learn about {topic}!
+
+We'll explore these topics:
 
 1. {topics[0]}
 2. {topics[1]}
@@ -127,17 +94,38 @@ Below is your learning path:
 4. {topics[3]}
 5. {topics[4]}
 
-Let's begin with {self.current_topic}!"""
-            return "I'm sorry, but I couldn't generate topics. Please try again."
+Let's start with {self.current_topic}!"""
+            else:
+                default_topics = [
+                    f"Introduction to {topic}",
+                    f"Core Concepts of {topic}",
+                    f"Advanced Principles of {topic}",
+                    f"Practical Applications of {topic}",
+                    f"Integration and Best Practices of {topic}"
+                ]
+                self.topics = default_topics
+                self.current_topic_index = 0
+                self.current_topic = self.topics[self.current_topic_index]
+                return f"""# 📚 Let's learn about {topic}!
+
+We'll explore these topics:
+
+1. {default_topics[0]}
+2. {default_topics[1]}
+3. {default_topics[2]}
+4. {default_topics[3]}
+5. {default_topics[4]}
+
+Let's start with {self.current_topic}!"""
+
         except Exception as e:
-            st.error(f"Error initializing session: {str(e)}")
-            return "I'm sorry, but I encountered an error. Please try again."
+            st.error(f"Error in topic generation: {str(e)}")
+            return "I encountered an error. Please try again."
 
     def teach_topic(self):
         current_topic = self.current_topic
         
-        prompt = f"""Create a comprehensive tutorial about {current_topic}.
-        Format as follows:
+        prompt = f"""Create a comprehensive tutorial about {current_topic}. Format as follows:
 
 [LESSON]
 {current_topic}
@@ -277,6 +265,7 @@ If not moving on, provide a specific follow-up question"""
             return True
         return False
 
+# Initialize session state
 def init_session_state():
     if 'messages' not in st.session_state:
         st.session_state.messages = []
@@ -322,17 +311,19 @@ def main():
 
     if st.session_state.teaching_state == 'initialize':
         if topic and st.button("Start Learning"):
-            response = st.session_state.tutor.initialize_session(
-                subject, level, prerequisites, topic
-            )
-            st.session_state.messages.append({"role": "assistant", "content": response})
-            st.session_state.teaching_state = 'teach_topic'
-            st.rerun()
+            with st.spinner("Preparing your learning path..."):
+                response = st.session_state.tutor.initialize_session(
+                    subject, level, prerequisites, topic
+                )
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                st.session_state.teaching_state = 'teach_topic'
+                st.rerun()
 
     elif st.session_state.teaching_state == 'teach_topic':
-        content = st.session_state.tutor.teach_topic()
-        if content:
-            message = f"""# {st.session_state.tutor.current_topic}
+        with st.spinner("Preparing your lesson..."):
+            content = st.session_state.tutor.teach_topic()
+            if content:
+                message = f"""# {st.session_state.tutor.current_topic}
 
 {content['lesson']}
 
@@ -341,27 +332,27 @@ def main():
 
 ## Practice
 {content['question']}"""
-            st.session_state.messages.append({"role": "assistant", "content": message})
-            st.session_state.last_question = content['question']
-            st.session_state.teaching_state = 'wait_for_answer'
-            st.rerun()
+                st.session_state.messages.append({"role": "assistant", "content": message})
+                st.session_state.last_question = content['question']
+                st.session_state.teaching_state = 'wait_for_answer'
+                st.rerun()
 
     elif st.session_state.teaching_state == 'wait_for_answer':
         prompt = st.chat_input("Share your thoughts...")
         if prompt:
             st.session_state.messages.append({"role": "user", "content": prompt})
-            evaluation = st.session_state.tutor.evaluate_answer(
-                st.session_state.last_question, prompt
-            )
-            
-            # Create formatted feedback
-            feedback_class = (
-                'feedback-positive' if evaluation['evaluation'] == 'correct'
-                else 'feedback-partial' if evaluation['evaluation'] == 'partial'
-                else 'feedback-negative'
-            )
+            with st.spinner("Evaluating your answer..."):
+                evaluation = st.session_state.tutor.evaluate_answer(
+                    st.session_state.last_question, prompt
+                )
+                
+                feedback_class = (
+                    'feedback-positive' if evaluation['evaluation'] == 'correct'
+                    else 'feedback-partial' if evaluation['evaluation'] == 'partial'
+                    else 'feedback-negative'
+                )
 
-            feedback = f"""<div class='feedback-box {feedback_class}'>
+                feedback = f"""<div class='feedback-box {feedback_class}'>
 
 ### Understanding Review
 {evaluation.get('understanding', '')}
@@ -372,22 +363,22 @@ def main():
 ### Areas for Improvement
 {evaluation.get('improvement', '')}"""
 
-            if not evaluation['move_on']:
-                feedback += f"""
+                if not evaluation['move_on']:
+                    feedback += f"""
 
 ### Follow-up Question
 {evaluation.get('followup', '')}"""
 
-            feedback += "</div>"
-            
-            st.session_state.messages.append({"role": "assistant", "content": feedback})
-            
-            if evaluation['move_on']:
-                if st.session_state.tutor.move_to_next_topic():
-                    st.session_state.teaching_state = 'teach_topic'
-                else:
-                    st.session_state.teaching_state = 'finished'
-            st.rerun()
+                feedback += "</div>"
+                
+                st.session_state.messages.append({"role": "assistant", "content": feedback})
+                
+                if evaluation['move_on']:
+                    if st.session_state.tutor.move_to_next_topic():
+                        st.session_state.teaching_state = 'teach_topic'
+                    else:
+                        st.session_state.teaching_state = 'finished'
+                st.rerun()
 
     elif st.session_state.teaching_state == 'finished':
         st.success("🎉 Congratulations! You've completed all topics!")
