@@ -217,39 +217,34 @@ class AITutor:
 
             state = st.session_state.learning_state
 
-            if state['current_question'] == "Can you explain how we create a variable in Python?":
+            if message.lower() in ['not sure', "i don't know", 'unclear']:
                 follow_up_prompt = f"""
-                The student answered: "{message}"
-                They were asked how to create a variable in Python.
-                They provided example: {message}
+                The student has indicated they're unsure about variables.
 
                 Create a response that:
-                1. Specifically acknowledges their correct example of variable creation
-                2. Builds on their understanding of the age variable they created
-                3. Shows how we might use this variable in a practical way
-                4. Asks a thoughtful follow-up question about variable usage
+                1. Acknowledges their honesty about being unsure
+                2. Provides a very simple, relatable explanation
+                3. Uses a real-world analogy
+                4. Gives a basic example
+                5. Asks a simple question to check understanding
 
                 Keep the response:
-                - Focused on their specific example
-                - Building on their demonstrated understanding
-                - Natural and conversational
-                - Leading to deeper variable concepts
-
-                Example flow:
-                - Acknowledge their correct use of age = 7
-                - Show how we might use this age variable
-                - Demonstrate a slightly more complex example
-                - Ask a question about variable usage
+                - Very basic and clear
+                - Using familiar concepts
+                - Encouraging and supportive
+                - Building foundation before complexity
 
                 Format as:
                 DISPLAY:
-                [Your response and next question]
+                [Your response and simple question]
 
                 ANSWER_KEY:
                 [Expected answer]
 
                 Do not switch topics or include answers in the display text.
                 """
+
+                state['phase'] = 'basic_understanding'
 
             response = self.api_client.generate_content(follow_up_prompt)
             
@@ -264,17 +259,21 @@ class AITutor:
             return response
 
         except Exception as e:
-            # Create a contextual response based on their last answer
-            return f"""
-            Great example! You've shown you understand how to create a variable by using 'age = 7'.
-            Let's see how we can use this variable in a program:
+            # Create a contextual response for uncertainty
+            return """
+            That's perfectly okay! Let me explain variables in a simpler way.
 
+            Think of a variable like a labeled box. If you have a box labeled "age", 
+            you can put a number in it. If you have a box labeled "name", you can 
+            put text in it.
+
+            For example:
             ```python
-            age = 7
-            next_year_age = age + 1
+            age = 10    # This creates a box labeled "age" and puts 10 in it
             ```
 
-            Can you guess what value will be stored in next_year_age?
+            Can you tell me what you think would happen if we created a box 
+            labeled "color" and put "blue" in it? How would we write that in Python?
             """
             
     def _get_next_topic(self, current_topic):
