@@ -184,11 +184,11 @@ def main():
     st.markdown("<h1 class='main-header'>🎓 AI Tutor</h1>", unsafe_allow_html=True)
 
     if "api_key" not in st.session_state:
-        api_key = st.text_input("Enter your Google Generative AI API Key:", type="password")
-        if api_key:
-            st.session_state.api_key = api_key
-            st.session_state.tutor = AITutor(api_key)
-            st.experimental_rerun()
+        # Retrieve API key from secrets.toml
+        api_key = st.secrets["google_gemini"]["api_key"] 
+        st.session_state.api_key = api_key
+        st.session_state.tutor = AITutor(api_key)
+        st.experimental_rerun()  # Rerun to initialize the tutor with the API key
     else:
         # Initialize session state variables
         if 'quiz_active' not in st.session_state:
