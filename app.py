@@ -248,8 +248,11 @@ class ProgressTracker:
             st.warning(f"Could not save progress: {e}")
 
 def main():
+    if 'tutor' not in st.session_state:
+        st.session_state.tutor = AITutor()
+    # Rest of main() function code...
 
-    class AITutor:
+class AITutor:
     def __init__(self):
         if 'GOOGLE_API_KEY' not in st.secrets:
             st.error("🔑 GOOGLE_API_KEY not found in secrets!")
