@@ -180,11 +180,9 @@ class AITutor:
         The student's background is: {prerequisites}
         Current topic: {topic}
 
-        Begin by:
-        1. Warmly welcome the student
-        2. Very briefly introduce the topic
-        3. Start teaching the first key concept
-        4. Ask one simple question to check understanding"""
+        Give a warm welcome, briefly introduce the topic, teach the first key concept, 
+        and end with a simple question to check understanding. Keep your response natural 
+        and conversational."""
         
         try:
             self.current_subject = subject
