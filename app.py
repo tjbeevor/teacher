@@ -202,84 +202,102 @@ class AITutor:
         except Exception as e:
             return f"Error initializing session: {str(e)}"
 
-    def send_message(self, message: str) -> str:
-        if not st.session_state.messages:
-            return "Please start a new session first."
-        
-        try:
-            if 'learning_state' not in st.session_state:
-                st.session_state.learning_state = {
-                    'current_topic': 'variables',
-                    'phase': 'initial',
-                    'last_question': None,
-                    'examples_given': [],
-                    'understanding_level': 0  # 0: basic, 1: intermediate, 2: advanced
-                }
-
-            state = st.session_state.learning_state
-
-            # Track the student's examples
-            if '=' in message:
-                state['examples_given'].append(message.strip())
-                state['understanding_level'] = max(state['understanding_level'], 1)
-
-            # If they've provided a correct variable assignment
-            if state['examples_given']:
-                last_example = state['examples_given'][-1]
-                
-                follow_up_prompt = f"""
-                The student has correctly created variables in these examples: {', '.join(state['examples_given'])}
-                Their latest example is: {last_example}
-
-                Create a response that:
-                1. Specifically acknowledges their correct variable creation
-                2. Explains why their syntax is correct
-                3. Builds on their example by showing how to use their variable
-                4. Introduces a slightly more advanced concept
-                5. Asks a question that involves using their variable in a new way
-
-                For example, if they created age = 42:
-                - Praise their correct syntax
-                - Show how to use their age variable in calculations
-                - Demonstrate string formatting with their variable
-                - Ask about combining operations
-
-                Keep the response:
-                - Focused on their specific example
-                - Building progressively in complexity
-                - Encouraging and specific
-                - Moving forward, not repeating basics
-
-                Never repeat the basic 'try creating a variable' prompt if they've already
-                successfully created variables.
-                """
-
-            response = self.api_client.generate_content(follow_up_prompt)
-            
-            if not response:
-                # Create a contextual fallback based on their last example
-                if state['examples_given']:
-                    latest = state['examples_given'][-1]
-                    var_name, var_value = latest.split('=')
-                    return f"""
-                    Excellent! You've correctly created the variable {var_name.strip()} with the value {var_value.strip()}.
-                    Let's use your variable in some interesting ways:
-
+    def create_lesson_flow(topic="data_types"):
+    lesson_structure = {
+        'data_types': {
+            'subtopics': [
+                {
+                    'concept': 'boolean',
+                    'explanation': """
+                    Let's start with one of Python's fundamental data types: booleans.
+                    A boolean (bool) data type can only have two values: True or False.
+                    These are special values in Python - notice they start with capital letters!
+                    
+                    We use booleans when we need to store yes/no, on/off, or true/false conditions.
+                    For example:
                     ```python
-                    {latest}
-                    # Let's do something with your variable
-                    message = f"The value is: {var_name.strip()}"
-                    print(message)
+                    is_student = True
+                    has_license = False
                     ```
+                    
+                    Can you tell me what data type the value 'True' is in Python?
+                    """,
+                    'correct_response': """
+                    Not quite! While "True" with quotes would be a string, the value True 
+                    (without quotes) is actually a boolean data type. Let me explain the difference:
+                    
+                    ```python
+                    is_valid = True      # This is a boolean
+                    text = "True"        # This is a string
+                    ```
+                    
+                    The key difference is that booleans don't use quotes and can only be True or False.
+                    Let's try another example: Which of these is a boolean value:
+                    1. "False"
+                    2. False
+                    3. false
+                    """,
+                    'next_topic': 'integers'
+                },
+                {
+                    'concept': 'integers',
+                    'explanation': """
+                    Great! Now let's learn about integers (int).
+                    Integers are whole numbers without decimal points.
+                    They can be positive, negative, or zero.
+                    
+                    For example:
+                    ```python
+                    age = 25
+                    temperature = -5
+                    count = 0
+                    ```
+                    
+                    Can you give me an example of when we might use an integer in a real program?
+                    """,
+                    'next_topic': 'floats'
+                }
+                # Additional subtopics would continue here...
+            ]
+        }
+    }
+    return lesson_structure
 
-                    Can you think of a way we might use your {var_name.strip()} variable in a calculation? 
-                    For example, what if we wanted to double it?
-                    """
+def send_message(self, message: str) -> str:
+    try:
+        if 'learning_state' not in st.session_state:
+            st.session_state.learning_state = {
+                'current_topic': 'boolean',
+                'understanding_level': 0,
+                'attempts': 0
+            }
 
-            return response
+        state = st.session_state.learning_state
 
-        except Exception as e:
-            return "Let's continue exploring how we can use the variable you've created. What would you like to do with it?"
+        if message.lower() == 'string':
+            return """
+            I see why you might think that! Let me clarify something important:
+
+            In Python, there's a difference between "True" (with quotes) and True (without quotes):
+            ```python
+            boolean_value = True       # This is a boolean
+            string_value = "True"      # This is a string
+            ```
+
+            The lack of quotes is crucial - it tells Python this is a special boolean value, 
+            not just text.
+
+            Let's try another way: Which of these would you use to check if a user is logged in?
+            1. is_logged_in = "True"
+            2. is_logged_in = True
+
+            What do you think is the correct choice, and why?
+            """
+
+        # Additional response logic would continue...
+
+    except Exception as e:
+        return "Let me rephrase my explanation. Could you try answering again?"
             
     def _get_next_topic(self, current_topic):
         topics = {
