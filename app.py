@@ -223,35 +223,49 @@ class AITutor:
         Main topic: {topic}
 
         Please provide a list of 5 key subtopics to cover for {topic} in {subject}.
-        Format your response as a valid JSON string representing a list of strings.
+        Format your response as a valid JSON array of strings.
         """
         response = self.api_client.generate_content(prompt)
         try:
             self.topics = json.loads(response)
-        except json.JSONDecodeError:
-            st.error("Failed to parse the response from the AI. Please try again.")
+        if not isinstance(self.topics, list) or len(self.topics) == 0:
+            raise ValueError("Invalid response format")
+                self.current_topic_index = 0
+                self.current_topic = self.topics[self.current_topic_index]
+            return f"Great! Let's start our lesson on {topic}. We'll cover these subtopics: {', '.join(self.topics)}. Let's begin with {self.current_topic}."
+            except json.JSONDecodeError as e:
+                st.error(f"Failed to parse the response from the AI. Error: {str(e)}")
             return "I'm sorry, but I encountered an error. Let's try again."
-        self.current_topic_index = 0
-        self.current_topic = self.topics[self.current_topic_index]
-        
-        return f"Great! Let's start our lesson on {topic}. We'll cover these subtopics: {', '.join(self.topics)}. Let's begin with {self.current_topic}."
+            except ValueError as e:
+                st.error(f"Invalid response format from the AI. Error: {str(e)}")
+            return "I'm sorry, but I received an invalid response. Let's try again."
+
+    
 
     def teach_topic(self):
         prompt = f"""
         Teach the subtopic: {self.current_topic}
-        
+    
         1. Provide a brief lesson (2-3 sentences).
         2. Give 1-2 examples.
         3. Ask a question to test understanding.
 
-        Format your response as a valid JSON string with keys: 'lesson', 'examples', and 'question'.
+        Format your response as a valid JSON object with keys: 'lesson', 'examples', and 'question'.
         """
         response = self.api_client.generate_content(prompt)
         try:
-            return json.loads(response)
-        except json.JSONDecodeError:
-            st.error("Failed to parse the lesson content. Please try again.")
+            content = json.loads(response)
+            if not all(key in content for key in ['lesson', 'examples', 'question']):
+                raise ValueError("Missing required keys in response")
+            return content
+        except json.JSONDecodeError as e:
+            st.error(f"Failed to parse the lesson content. Error: {str(e)}")
             return {"lesson": "I'm sorry, but I encountered an error. Let's try again.", "examples": "", "question": ""}
+        except ValueError as e:
+            st.error(f"Invalid lesson content format. Error: {str(e)}")
+            return {"lesson": "I'm sorry, but I received an invalid response. Let's try again.", "examples": "", "question": ""}
+    Let's try again.", "examples": "", "question": ""}
+    
 
     def evaluate_answer(self, question, answer):
         prompt = f"""
@@ -261,14 +275,23 @@ class AITutor:
         Evaluate the student's answer. Provide feedback and determine if the answer is correct, partially correct, or incorrect.
         If partially correct or incorrect, provide a brief explanation or hint.
 
-        Format your response as a valid JSON string with keys: 'evaluation' (string: 'correct', 'partially_correct', or 'incorrect'), 'feedback' (string), and 'move_on' (boolean).
+        Format your response as a valid JSON object with keys: 'evaluation' (string: 'correct', 'partially_correct', or 'incorrect'), 'feedback' (string), and 'move_on' (boolean).
         """
-        response = self.api_client.generate_content(prompt)
-        try:
-            return json.loads(response)
-        except json.JSONDecodeError:
-            st.error("Failed to parse the evaluation. Please try again.")
-            return {"evaluation": "incorrect", "feedback": "I'm sorry, but I encountered an error. Let's try again.", "move_on": False}
+            response = self.api_client.generate_content(prompt)
+            try:
+                evaluation = json.loads(response)
+                if not all(key in evaluation for key in ['evaluation', 'feedback', 'move_on']):
+                    raise ValueError("Missing required keys in response")
+                return evaluation
+            except json.JSONDecodeError as e:
+                st.error(f"Failed to parse the evaluation. Error: {str(e)}")
+                return {"evaluation": "incorrect", "feedback": "I'm sorry, but I encountered an error. Let's try again.", "move_on": False}
+            except ValueError as e:
+                st.error(f"Invalid evaluation format. Error: {str(e)}")
+                return {"evaluation": "incorrect", "feedback": "I'm sorry, but I received an invalid response. Let's try again.", "move_on": False}
+
+
+    
 
     def move_to_next_topic(self):
         self.current_topic_index += 1
