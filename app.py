@@ -203,77 +203,69 @@ class AITutor:
         self.api_client = APIClient(st.secrets["GOOGLE_API_KEY"])
         self.quiz_generator = QuizGenerator(self.api_client)
         self.progress_tracker = ProgressTracker()
+        self.current_topic = None
+        self.topics = []
+        self.current_topic_index = 0
 
     def initialize_session(self, subject, level, prerequisites, topic):
         prompt = f"""
         You are a friendly and encouraging tutor teaching {subject} at {level} level.
         The student's background is: {prerequisites}
-        Current topic is {topic}.
-        
-        Your task is to have a natural conversation with the student. Start by introducing the topic,
-        then teach the first key concept. Ask questions to check understanding and encourage participation.
-        
-        Keep your responses natural and conversational.
-        """
-        
-        return self.api_client.generate_content(prompt)
+        Main topic: {topic}
 
-    def send_message(self, message):
-        prompt = f"""
-        The student's response was "{message}". Continue the conversation naturally.
-        Provide feedback and introduce new concepts if appropriate.
+        Please provide a list of 5 key subtopics to cover for {topic} in {subject}.
+        Format your response as a Python list of strings.
         """
-        return self.api_client.generate_content(prompt)
+        response = self.api_client.generate_content(prompt)
+        self.topics = eval(response)  # Convert string representation of list to actual list
+        self.current_topic_index = 0
+        self.current_topic = self.topics[self.current_topic_index]
+        
+        return f"Great! Let's start our lesson on {topic}. We'll cover these subtopics: {', '.join(self.topics)}. Let's begin with {self.current_topic}."
+
+    def teach_topic(self):
+        prompt = f"""
+        Teach the subtopic: {self.current_topic}
+        
+        1. Provide a brief lesson (2-3 sentences).
+        2. Give 1-2 examples.
+        3. Ask a question to test understanding.
+
+        Format your response as a Python dictionary with keys: 'lesson', 'examples', and 'question'.
+        """
+        response = self.api_client.generate_content(prompt)
+        return eval(response)  # Convert string representation of dict to actual dict
+
+    def evaluate_answer(self, question, answer):
+        prompt = f"""
+        Question: {question}
+        Student's answer: {answer}
+
+        Evaluate the student's answer. Provide feedback and determine if the answer is correct, partially correct, or incorrect.
+        If partially correct or incorrect, provide a brief explanation or hint.
+
+        Format your response as a Python dictionary with keys: 'evaluation' (string: 'correct', 'partially_correct', or 'incorrect'), 'feedback' (string), and 'move_on' (boolean).
+        """
+        response = self.api_client.generate_content(prompt)
+        return eval(response)  # Convert string representation of dict to actual dict
+
+    def move_to_next_topic(self):
+        self.current_topic_index += 1
+        if self.current_topic_index < len(self.topics):
+            self.current_topic = self.topics[self.current_topic_index]
+            return True
+        return False
 
 def main():
     if 'tutor' not in st.session_state:
         st.session_state.tutor = AITutor()
+    if 'teaching_state' not in st.session_state:
+        st.session_state.teaching_state = 'initialize'
 
     chat_col, viz_col = st.columns([2, 1])
 
     with st.sidebar:
-        st.markdown("""
-        <div style='text-align: center; padding-bottom: 1rem;'>
-            <h3 style='color: #1E3A8A;'>Session Configuration</h3>
-        </div>
-        """, unsafe_allow_html=True)
-
-        user_name = st.text_input("👤 Your Name")
-        subjects = [
-            "Python Programming",
-            "Mathematics",
-            "Physics",
-            "Chemistry",
-            "Biology",
-            "History",
-            "Literature",
-            "Economics"
-        ]
-        subject = st.selectbox("📚 Select Subject", subjects)
-        levels = ["Beginner", "Intermediate", "Advanced"]
-        level = st.selectbox("📊 Select Level", levels)
-        topic = st.text_input("🎯 Specific Topic")
-        prerequisites = st.text_area("🔍 Your Background/Prerequisites")
-
-        if st.button("🚀 Start New Session"):
-            if not topic or not prerequisites:
-                st.error("⚠️ Please fill in both Topic and Prerequisites")
-            else:
-                with st.spinner("🔄 Initializing your session..."):
-                    response = st.session_state.tutor.initialize_session(
-                        subject, level, prerequisites, topic
-                    )
-                    st.session_state.messages = []
-                    st.session_state.messages.append({"role": "assistant", "content": response})
-                st.success("✨ Session started!")
-
-        if st.button("🔄 Reset Session"):
-            st.session_state.messages = []
-            st.session_state.quiz_active = False
-            st.session_state.current_quiz = None
-            st.session_state.quiz_score = 0
-            st.session_state.current_question = 0
-            st.experimental_rerun()
+        # ... (keep the existing sidebar code)
 
     with chat_col:
         st.markdown("""
@@ -286,93 +278,46 @@ def main():
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
-        if prompt := st.chat_input("💭 Type your response here..."):
-            with st.chat_message("user"):
-                st.markdown(prompt)
-            st.session_state.messages.append({"role": "user", "content": prompt})
-
-            with st.chat_message("assistant"):
-                with st.spinner("🤔 Thinking..."):
-                    response = st.session_state.tutor.send_message(prompt)
-                st.markdown(response)
+        if st.session_state.teaching_state == 'initialize':
+            if st.button("🚀 Start Learning"):
+                with st.spinner("🔄 Preparing your lesson..."):
+                    response = st.session_state.tutor.initialize_session(subject, level, prerequisites, topic)
                 st.session_state.messages.append({"role": "assistant", "content": response})
+                st.session_state.teaching_state = 'teach_topic'
+                st.experimental_rerun()
+
+        elif st.session_state.teaching_state == 'teach_topic':
+            with st.spinner("🔄 Preparing the next topic..."):
+                topic_content = st.session_state.tutor.teach_topic()
+            st.session_state.messages.append({"role": "assistant", "content": f"{topic_content['lesson']}\n\nExamples:\n{topic_content['examples']}\n\nQuestion: {topic_content['question']}"})
+            st.session_state.teaching_state = 'wait_for_answer'
+            st.experimental_rerun()
+
+        elif st.session_state.teaching_state == 'wait_for_answer':
+            if prompt := st.chat_input("💭 Type your answer here..."):
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                with st.spinner("🤔 Evaluating your answer..."):
+                    evaluation = st.session_state.tutor.evaluate_answer(topic_content['question'], prompt)
+                feedback = f"{evaluation['feedback']}"
+                st.session_state.messages.append({"role": "assistant", "content": feedback})
+                
+                if evaluation['move_on']:
+                    if st.session_state.tutor.move_to_next_topic():
+                        st.session_state.teaching_state = 'teach_topic'
+                    else:
+                        st.session_state.teaching_state = 'finished'
+                else:
+                    st.session_state.teaching_state = 'wait_for_answer'
+                st.experimental_rerun()
+
+        elif st.session_state.teaching_state == 'finished':
+            st.success("🎉 Congratulations! You've completed all topics in this lesson.")
+            if st.button("📝 Take Quiz"):
+                # Implement quiz functionality here
+                pass
 
     with viz_col:
-        st.markdown("""
-        <div class='chat-container'>
-            <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>📈 Learning Progress</h3>
-        </div>
-        """, unsafe_allow_html=True)
-
-        if st.button("📝 Take Quiz"):
-            if not topic:
-                st.error("⚠️ Please start a session first")
-            else:
-                st.session_state.quiz_active = True
-                with st.spinner("⚙️ Generating quiz..."):
-                    quiz_data = st.session_state.tutor.quiz_generator.generate_quiz(
-                        subject, topic, level
-                    )
-                    if quiz_data:
-                        st.session_state.current_quiz = quiz_data
-                        st.session_state.quiz_score = 0
-                        st.session_state.current_question = 0
-
-        if st.session_state.quiz_active and st.session_state.current_quiz:
-            quiz_data = st.session_state.current_quiz
-            current_q = st.session_state.current_question
-
-            if current_q < len(quiz_data['questions']):
-                question = quiz_data['questions'][current_q]
-                st.subheader(f"Question {current_q + 1}")
-                st.write(question['question'])
-                answer = st.radio(
-                    "Select your answer:",
-                    question['options'],
-                    key=f"q_{current_q}"
-                )
-
-                if st.button("Submit Answer", key=f"submit_{current_q}"):
-                    if answer == question['correct_answer']:
-                        st.session_state.quiz_score += 1
-                        st.success("✅ Correct!")
-                    else:
-                        st.error(f"❌ Incorrect. {question['explanation']}")
-
-                    if current_q < len(quiz_data['questions']) - 1:
-                        st.session_state.current_question += 1
-                        st.experimental_rerun()
-                    else:
-                        final_score = (st.session_state.quiz_score / len(quiz_data['questions'])) * 100
-                        st.session_state.tutor.progress_tracker.save_progress(
-                            user_name, subject, topic, final_score
-                        )
-                        st.session_state.quiz_active = False
-                        st.success(f"🎉 Quiz completed! Score: {final_score}%")
-
-        try:
-            progress_data = st.session_state.tutor.progress_tracker.load_history()
-            if progress_data and len(progress_data) > 0:
-                df = pd.DataFrame(progress_data)
-                fig = px.line(
-                    df, 
-                    x='timestamp', 
-                    y='score', 
-                    color='subject',
-                    title='Performance Over Time',
-                    template='seaborn'
-                )
-                fig.update_layout(
-                    plot_bgcolor='white',
-                    paper_bgcolor='white',
-                    font={'color': '#1E3A8A'},
-                    title={'font': {'size': 20}},
-                    xaxis={'gridcolor': '#E2E8F0'},
-                    yaxis={'gridcolor': '#E2E8F0'}
-                )
-                st.plotly_chart(fig, use_container_width=True)
-        except Exception as e:
-            st.warning("No progress data available yet.")
+        # ... (keep the existing visualization code)
 
 if __name__ == "__main__":
     try:
