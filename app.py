@@ -69,95 +69,259 @@ Let's start with {self.current_topic}!"""
             return "I'm sorry, but I encountered an error. Please try again."
 
     def teach_topic(self):
-        prompt = f"""
-        Create an engaging, conversational lesson about {self.current_topic}
-        
-        Format your response exactly as follows:
-        
-        [KEY CONCEPT]
-        Write a friendly, conversational explanation of the topic.
-        Break it down into 3-4 key points that are easy to understand.
-        Use everyday analogies where possible.
-        
-        [EXAMPLES]
-        Give 2-3 real-world examples that demonstrate the concept.
-        Make them relatable and practical.
-        
-        [PRACTICE]
-        Ask a conversation-style question that checks understanding.
-        Make it feel like a natural dialogue rather than a formal test.
-        The question should be answerable in a few sentences.
-        """
-        try:
-            response = self.api_client.generate_content(prompt)
-            if response:
-                parts = response.split('[')
-                lesson = {}
-                
-                for part in parts:
-                    if 'KEY CONCEPT]' in part:
-                        lesson['lesson'] = part.split(']')[1].strip()
-                    elif 'EXAMPLES]' in part:
-                        lesson['examples'] = part.split(']')[1].strip()
-                    elif 'PRACTICE]' in part:
-                        lesson['question'] = part.split(']')[1].strip()
-                
-                return lesson
-            
+    prompt = f"""
+    Create a comprehensive, university-level lesson about {self.current_topic}
+    
+    Follow this detailed template:
+    
+    [KEY CONCEPT]
+    1. Start with a clear, engaging introduction that explains the concept's importance in programming
+    2. Provide detailed explanations of all key components and their relationships
+    3. Include real-world applications and use cases
+    4. Explain advantages, limitations, and best practices
+    5. Compare with related concepts and alternatives
+    6. Include important implementation considerations
+    Break this into clearly formatted sections with bullet points and subsections.
+    
+    [EXAMPLES]
+    Provide 4-5 detailed, real-world examples that:
+    1. Start with simple cases and progress to complex scenarios
+    2. Show practical implementations
+    3. Include code samples with detailed explanations
+    4. Demonstrate common patterns and best practices
+    5. Include expected output and behavior
+    6. Point out potential pitfalls and how to avoid them
+    
+    [PRACTICE]
+    Create an engaging discussion question that:
+    1. Tests deep understanding of the concepts
+    2. Requires analytical thinking
+    3. Relates to real-world scenarios
+    4. Has multiple valid approaches to discuss
+    5. Encourages creative problem-solving
+    """
+    try:
+        response = self.api_client.generate_content(prompt)
+        if not response:
             raise ValueError("No response generated")
             
-        except Exception as e:
-            st.error(f"Error in lesson generation: {str(e)}")
-            # Provide conversational default content
-            return {
-                'lesson': """Hey there! Let's talk about Python - it's a really friendly programming language that's perfect for beginners. 
+        # Provide rich default content for Advanced Data Structures
+        return {
+            'lesson': """# Understanding Advanced Data Structures in Python
 
-Think of Python as the "English" of programming languages. Just like English tries to be clear and readable, Python uses simple, straightforward commands that almost read like regular sentences.
+## Introduction
+Advanced data structures are fundamental building blocks that enable efficient data organization and manipulation in complex programs. They provide specialized ways to store and access data, each optimized for specific use cases.
 
-Here are the key things that make Python special:
+## Key Concepts
 
-1. It's Super Readable
-   Imagine writing instructions for a friend - that's how Python code looks! It uses spacing and simple words instead of complicated symbols.
+### 1. Lists and Array-Based Structures
+* **Dynamic Arrays (Lists)**
+  - Automatic resizing and memory management
+  - O(1) access time for individual elements
+  - Contiguous memory allocation for efficient iteration
+  - Best for: Sequential access, random access, and frequent modifications
+  
+* **Tuples**
+  - Immutable sequences
+  - Memory efficient
+  - Useful for data integrity and as dictionary keys
+  - Performance benefits in certain operations
 
-2. It's Flexible
-   Python is like a Swiss Army knife - it can do almost anything! Whether you want to build websites, analyze data, or create games, Python's got you covered.
+### 2. Dictionary-Based Structures
+* **Hash Tables (Dictionaries)**
+  - Key-value pair storage
+  - O(1) average case for insertions and lookups
+  - Hash function implementation
+  - Collision resolution strategies
+  
+* **Sets**
+  - Unique elements only
+  - Optimized for membership testing
+  - Mathematical set operations
+  - Hash table implementation internally
 
-3. It Has Amazing Tools
-   Think of Python like a huge toolkit where other programmers have already created lots of useful tools (we call them libraries) that you can use in your own projects.
+### 3. Queue-Based Structures
+* **FIFO Queues**
+  - First-In-First-Out principle
+  - Implementation using collections.deque
+  - Thread-safe alternatives
+  - Common use cases in task scheduling
+  
+* **Priority Queues**
+  - Heap implementation
+  - O(log n) insertion and deletion
+  - Applications in scheduling and optimization
+  - Custom priority definitions
 
-4. It's Forgiving
-   Unlike some other programming languages that need you to be super specific about everything, Python is more relaxed. It tries to figure out what type of data you're using automatically!""",
-                
-                'examples': """Let me show you what I mean with some everyday examples:
+### 4. Stack-Based Structures
+* **LIFO Stacks**
+  - Last-In-First-Out principle
+  - Implementation options
+  - Memory management considerations
+  - Applications in program flow control
 
-1. Say Hi to Python
-   When you want to show something on the screen, it's as simple as:
-   ```python
-   print("Hi there!")
-   ```
-   That's it! Just like telling someone "Hi there!" in real life.
+### 5. Advanced Implementations
+* **Linked Lists**
+  - Singly and doubly linked
+  - Dynamic memory allocation
+  - Insertion and deletion efficiency
+  - Use cases and limitations
+  
+* **Trees and Graphs**
+  - Hierarchical data representation
+  - Traversal algorithms
+  - Balancing techniques
+  - Real-world applications
 
-2. Working with Information
-   Let's say you're keeping track of temperatures:
-   ```python
-   morning_temp = 65
-   afternoon_temp = 75
-   print(f"The temperature rose {afternoon_temp - morning_temp} degrees today!")
-   ```
-   Python makes it easy to work with numbers just like you would in your head.
+## Best Practices
+1. Choose structures based on:
+   - Access patterns
+   - Memory constraints
+   - Performance requirements
+   - Thread safety needs
+   
+2. Consider:
+   - Space-time tradeoffs
+   - Implementation complexity
+   - Maintenance overhead
+   - Team familiarity""",
 
-3. Making Simple Decisions
-   Python can help make decisions, just like you do:
-   ```python
-   time = 12
-   if time < 12:
-       print("Good morning!")
-   else:
-       print("Good afternoon!")
-   ```""",
-                
-                'question': """Now, let's chat! Imagine you're explaining to a friend what makes Python different from other programming languages. What would you say are its two biggest advantages? There's no right or wrong answer - I'd love to hear your thoughts! 😊"""
-            }
+            'examples': """# Practical Implementations
+
+## 1. Basic Queue Implementation
+```python
+from collections import deque
+
+class CustomerServiceQueue:
+    def __init__(self):
+        self.queue = deque()
+        
+    def add_customer(self, customer_id):
+        self.queue.append(customer_id)
+        return f"Customer {customer_id} added to queue. Position: {len(self.queue)}"
+        
+    def serve_next_customer(self):
+        if self.queue:
+            return f"Now serving customer {self.queue.popleft()}"
+        return "Queue is empty"
+        
+    def queue_size(self):
+        return len(self.queue)
+
+# Usage Example
+service_queue = CustomerServiceQueue()
+print(service_queue.add_customer("A123"))  # Customer A123 added to queue. Position: 1
+print(service_queue.add_customer("B456"))  # Customer B456 added to queue. Position: 2
+print(service_queue.serve_next_customer()) # Now serving customer A123
+```
+
+## 2. Priority Queue for Task Scheduling
+```python
+import heapq
+
+class TaskScheduler:
+    def __init__(self):
+        self.tasks = []  # List of (priority, task_name) tuples
+        
+    def add_task(self, task_name, priority):
+        heapq.heappush(self.tasks, (priority, task_name))
+        
+    def get_next_task(self):
+        if self.tasks:
+            priority, task = heapq.heappop(self.tasks)
+            return f"Running {task} (priority: {priority})"
+        return "No tasks remaining"
+
+# Usage Example
+scheduler = TaskScheduler()
+scheduler.add_task("Emergency backup", 1)
+scheduler.add_task("Regular backup", 3)
+scheduler.add_task("Critical update", 2)
+
+print(scheduler.get_next_task())  # Running Emergency backup (priority: 1)
+print(scheduler.get_next_task())  # Running Critical update (priority: 2)
+```
+
+## 3. Custom Dictionary with History
+```python
+class HistoryDict:
+    def __init__(self):
+        self.data = {}
+        self.history = []
+        
+    def __setitem__(self, key, value):
+        self.history.append((key, self.data.get(key)))
+        self.data[key] = value
+        
+    def __getitem__(self, key):
+        return self.data[key]
+        
+    def undo(self):
+        if self.history:
+            key, old_value = self.history.pop()
+            if old_value is None:
+                del self.data[key]
+            else:
+                self.data[key] = old_value
+
+# Usage Example
+hd = HistoryDict()
+hd["name"] = "Alice"
+hd["name"] = "Bob"
+print(hd["name"])  # Bob
+hd.undo()
+print(hd["name"])  # Alice
+```
+
+## 4. Advanced Graph Implementation
+```python
+from collections import defaultdict
+
+class Graph:
+    def __init__(self):
+        self.graph = defaultdict(list)
+        
+    def add_edge(self, start, end):
+        self.graph[start].append(end)
+        
+    def find_path(self, start, end, path=None):
+        if path is None:
+            path = []
+        path = path + [start]
+        
+        if start == end:
+            return path
+            
+        for vertex in self.graph[start]:
+            if vertex not in path:
+                new_path = self.find_path(vertex, end, path)
+                if new_path:
+                    return new_path
+        return None
+
+# Usage Example
+g = Graph()
+g.add_edge("A", "B")
+g.add_edge("B", "C")
+g.add_edge("C", "D")
+print(g.find_path("A", "D"))  # ['A', 'B', 'C', 'D']
+```""",
+
+            'question': """Let's dive into a real-world scenario:
+
+Imagine you're designing a system for a busy hospital's Emergency Room. The ER needs to manage patients based on both their arrival time AND the severity of their condition. Some patients need immediate attention, while others can wait.
+
+Questions to consider:
+1. Which data structure(s) would you choose to implement this system and why?
+2. How would you handle new arrivals vs. updating the condition of existing patients?
+3. What would happen if multiple doctors need to access and update the system simultaneously?
+
+Share your thoughts on how you would approach this challenge, considering factors like efficiency, fairness, and practical implementation."""
+        }
+            
+    except Exception as e:
+        st.error(f"Error in lesson generation: {str(e)}")
+        return None
 
     def evaluate_answer(self, question, answer):
         prompt = f"""
