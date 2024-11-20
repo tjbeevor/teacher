@@ -68,147 +68,128 @@ Let's start with {self.current_topic}!"""
             st.error(f"Error initializing session: {str(e)}")
             return "I'm sorry, but I encountered an error. Please try again."
 
-
-def teach_topic(self):
-    current_topic = self.current_topic
-    
-    # Generate appropriate default content based on the topic
-    default_content = {
-        'lesson': f"""# {current_topic}
-
-## Introduction
-{self._generate_introduction(current_topic)}
-
-## Core Concepts
-{self._generate_core_concepts(current_topic)}
-
-## Key Points to Remember
-{self._generate_key_points(current_topic)}""",
-
-        'examples': self._generate_examples(current_topic),
-        'question': self._generate_practice_question(current_topic)
-    }
-
-    prompt = f"""
-    Create a comprehensive, university-level lesson about {current_topic}
-    
-    Format your response exactly like this:
-    
-    [KEY CONCEPT]
-    # Title
-    
-    ## Introduction
-    [Thorough introduction explaining the importance and context]
-    
-    ## Core Concepts
-    [Detailed breakdown of main concepts]
-    
-    ## Key Points
-    [Important points to remember]
-    
-    [EXAMPLES]
-    ## Example 1: Basic Implementation
-    [Basic example with explanation]
-    
-    ## Example 2: Intermediate Case
-    [More complex example with explanation]
-    
-    ## Example 3: Advanced Usage
-    [Advanced implementation with explanation]
-    
-    [PRACTICE]
-    [Thought-provoking real-world scenario question]
-    """
-    
-    try:
-        response = self.api_client.generate_content(prompt)
-        if response:
-            parts = response.split('[')
-            lesson = {}
+    def teach_topic(self):
+        current_topic = self.current_topic
+        
+        prompt = f"""
+        Create a comprehensive, university-level lesson about {current_topic}
+        
+        Format your response exactly like this:
+        
+        [KEY CONCEPT]
+        # Title
+        
+        ## Introduction
+        [Thorough introduction explaining the importance and context]
+        
+        ## Core Concepts
+        [Detailed breakdown of main concepts]
+        
+        ## Key Points
+        [Important points to remember]
+        
+        [EXAMPLES]
+        ## Example 1: Basic Implementation
+        [Basic example with explanation]
+        
+        ## Example 2: Intermediate Case
+        [More complex example with explanation]
+        
+        ## Example 3: Advanced Usage
+        [Advanced implementation with explanation]
+        
+        [PRACTICE]
+        [Thought-provoking real-world scenario question]
+        """
+        
+        try:
+            response = self.api_client.generate_content(prompt)
+            if response:
+                parts = response.split('[')
+                lesson = {}
+                
+                for part in parts:
+                    if 'KEY CONCEPT]' in part:
+                        lesson['lesson'] = part.split(']')[1].strip()
+                    elif 'EXAMPLES]' in part:
+                        lesson['examples'] = part.split(']')[1].strip()
+                    elif 'PRACTICE]' in part:
+                        lesson['question'] = part.split(']')[1].strip()
+                
+                # Verify all parts are present
+                if all(key in lesson for key in ['lesson', 'examples', 'question']):
+                    return lesson
             
-            for part in parts:
-                if 'KEY CONCEPT]' in part:
-                    lesson['lesson'] = part.split(']')[1].strip()
-                elif 'EXAMPLES]' in part:
-                    lesson['examples'] = part.split(']')[1].strip()
-                elif 'PRACTICE]' in part:
-                    lesson['question'] = part.split(']')[1].strip()
+            raise ValueError("No response generated")
             
-            # Verify all parts are present
-            if all(key in lesson for key in ['lesson', 'examples', 'question']):
-                return lesson
-            
-        # If we get here, either no response or missing sections
-        return default_content
-            
-    except Exception as e:
-        st.error(f"Error in lesson generation: {str(e)}")
-        return default_content
+        except Exception as e:
+            st.error(f"Error in lesson generation: {str(e)}")
+            return None
 
-def _generate_introduction(self, topic):
-    """Generate a topic-specific introduction."""
-    # Example mapping of topics to introductions
-    intro_templates = {
-        'data types': """Python's data types are fundamental building blocks that determine how data is stored and manipulated. Understanding these types is crucial for writing efficient and error-free code.""",
-        'functions': """Functions are reusable blocks of code that help organize and modularize programs. They are essential for writing maintainable and scalable Python applications.""",
-        'loops': """Loops are control structures that allow repetitive execution of code blocks. They are fundamental for automating repetitive tasks and processing collections of data.""",
-        # Add more mappings as needed
-    }
-    
-    # Default introduction if no specific match
-    default_intro = f"""Understanding {topic} is a crucial part of mastering Python programming. This concept provides essential functionality that you'll use in virtually every Python program you write."""
-    
-    # Search for keywords in the topic and return appropriate introduction
-    for key, intro in intro_templates.items():
-        if key in topic.lower():
-            return intro
-    return default_intro
+    def _generate_introduction(self, topic):
+        """Generate a topic-specific introduction."""
+        # Example mapping of topics to introductions
+        intro_templates = {
+            'data types': """Python's data types are fundamental building blocks that determine how data is stored and manipulated. Understanding these types is crucial for writing efficient and error-free code.""",
+            'functions': """Functions are reusable blocks of code that help organize and modularize programs. They are essential for writing maintainable and scalable Python applications.""",
+            'loops': """Loops are control structures that allow repetitive execution of code blocks. They are fundamental for automating repetitive tasks and processing collections of data.""",
+            # Add more mappings as needed
+        }
+        
+        # Default introduction if no specific match
+        default_intro = f"""Understanding {topic} is a crucial part of mastering Python programming. This concept provides essential functionality that you'll use in virtually every Python program you write."""
+        
+        # Search for keywords in the topic and return appropriate introduction
+        for key, intro in intro_templates.items():
+            if key in topic.lower():
+                return intro
+        return default_intro
 
-def _generate_core_concepts(self, topic):
-    """Generate topic-specific core concepts."""
-    concepts = []
-    topic_lower = topic.lower()
-    
-    if 'data' in topic_lower and 'type' in topic_lower:
-        concepts = [
-            "### Numeric Types",
-            "* Integers (int)",
-            "* Floating-point numbers (float)",
-            "* Complex numbers",
-            "\n### Text Type",
-            "* Strings (str)",
-            "\n### Boolean Type",
-            "* True/False values",
-            "\n### Sequence Types",
-            "* Lists",
-            "* Tuples",
-            "* Range objects"
-        ]
-    elif 'function' in topic_lower:
-        concepts = [
-            "### Function Definition",
-            "* Function syntax",
-            "* Parameters and arguments",
-            "* Return values",
-            "\n### Function Types",
-            "* Built-in functions",
-            "* User-defined functions",
-            "* Lambda functions",
-            "\n### Function Scope",
-            "* Local variables",
-            "* Global variables",
-            "* Nonlocal variables"
-        ]
-    # Add more topic-specific concepts
-    
-    return "\n".join(concepts) if concepts else f"### Understanding {topic}\n* Core principles\n* Key components\n* Common use cases"
+    def _generate_core_concepts(self, topic):
+        """Generate topic-specific core concepts."""
+        concepts = []
+        topic_lower = topic.lower()
+        
+        if 'data' in topic_lower and 'type' in topic_lower:
+            concepts = [
+                "### Numeric Types",
+                "* Integers (int)",
+                "* Floating-point numbers (float)",
+                "* Complex numbers",
+                "\n### Text Type",
+                "* Strings (str)",
+                "\n### Boolean Type",
+                "* True/False values",
+                "\n### Sequence Types",
+                "* Lists",
+                "* Tuples",
+                "* Range objects"
+            ]
+        elif 'function' in topic_lower:
+            concepts = [
+                "### Function Definition",
+                "* Function syntax",
+                "* Parameters and arguments",
+                "* Return values",
+                "\n### Function Types",
+                "* Built-in functions",
+                "* User-defined functions",
+                "* Lambda functions",
+                "\n### Function Scope",
+                "* Local variables",
+                "* Global variables",
+                "* Nonlocal variables"
+            ]
+        # Add more topic-specific concepts
+        
+        return "\n".join(concepts) if concepts else f"### Understanding {topic}\n* Core principles\n* Key components\n* Common use cases"
 
-def _generate_examples(self, topic):
-    """Generate topic-specific examples."""
-    topic_lower = topic.lower()
-    
-    # Base structure for examples
-    example_structure = """## Example 1: Basic Usage
+    def _generate_examples(self, topic):
+        """Generate topic-specific examples."""
+        topic_lower = topic.lower()
+        
+        # Base structure for examples
+        example_structure = """## Example 1: Basic Usage
 ```python
 {basic_example}
 ```
@@ -222,11 +203,11 @@ def _generate_examples(self, topic):
 ```python
 {advanced_example}
 ```"""
-    
-    # Topic-specific examples
-    if 'data' in topic_lower and 'type' in topic_lower:
-        return example_structure.format(
-            basic_example="""# Basic data types
+        
+        # Topic-specific examples
+        if 'data' in topic_lower and 'type' in topic_lower:
+            return example_structure.format(
+                basic_example="""# Basic data types
 x = 42              # Integer
 y = 3.14           # Float
 name = "Python"     # String
@@ -236,8 +217,8 @@ print(type(x), x)
 print(type(y), y)
 print(type(name), name)
 print(type(is_valid), is_valid)""",
-            
-            intermediate_example="""# Type conversion
+                
+                intermediate_example="""# Type conversion
 price = "19.99"
 quantity = 3
 
@@ -245,8 +226,8 @@ quantity = 3
 total = float(price) * quantity
 
 print(f"Total cost: ${total:.2f}")""",
-            
-            advanced_example="""# Complex data type operations
+                
+                advanced_example="""# Complex data type operations
 from decimal import Decimal
 
 # Using Decimal for precise financial calculations
@@ -258,21 +239,21 @@ total = sum(Decimal(price) * qty
            for price, qty in zip(prices, quantities))
 
 print(f"Total: ${total:.2f}")"""
+            )
+        # Add more topic-specific examples
+        
+        return example_structure.format(
+            basic_example=f"# Basic {topic} example\n# Code here",
+            intermediate_example=f"# Intermediate {topic} example\n# Code here",
+            advanced_example=f"# Advanced {topic} example\n# Code here"
         )
-    # Add more topic-specific examples
-    
-    return example_structure.format(
-        basic_example=f"# Basic {topic} example\n# Code here",
-        intermediate_example=f"# Intermediate {topic} example\n# Code here",
-        advanced_example=f"# Advanced {topic} example\n# Code here"
-    )
 
-def _generate_practice_question(self, topic):
-    """Generate a topic-specific practice question."""
-    topic_lower = topic.lower()
-    
-    if 'data' in topic_lower and 'type' in topic_lower:
-        return """Let's solve a real-world problem!
+    def _generate_practice_question(self, topic):
+        """Generate a topic-specific practice question."""
+        topic_lower = topic.lower()
+        
+        if 'data' in topic_lower and 'type' in topic_lower:
+            return """Let's solve a real-world problem!
 
 You're building a financial application that needs to handle various types of data:
 - Customer names and IDs
@@ -287,9 +268,9 @@ How would you:
 4. Validate input data to prevent errors?
 
 Share your approach to handling these requirements while ensuring data accuracy and program efficiency."""
-    
-    # Default question format
-    return f"""Let's apply what we've learned about {topic}!
+        
+        # Default question format
+        return f"""Let's apply what we've learned about {topic}!
 
 Consider a real-world scenario where you need to implement this concept:
 1. What key considerations would you keep in mind?
@@ -298,18 +279,6 @@ Consider a real-world scenario where you need to implement this concept:
 4. What best practices would you follow?
 
 Share your thoughts on how you would approach this challenge."""
-
-
-
-
-
-
-    
-
-
-
-
-
 
     def evaluate_answer(self, question, answer):
         prompt = f"""
