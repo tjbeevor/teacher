@@ -193,6 +193,30 @@ Let's start with {self.current_topic}!"""
             return True
         return False
 
+
+
+# Initialize session state at the top of the file, before the main function
+def init_session_state():
+    if 'messages' not in st.session_state:
+        st.session_state.messages = []
+    if 'teaching_state' not in st.session_state:
+        st.session_state.teaching_state = 'initialize'
+    if 'tutor' not in st.session_state:
+        st.session_state.tutor = AITutor()
+    if 'last_question' not in st.session_state:
+        st.session_state.last_question = None
+
+# Call initialization right after defining it
+init_session_state()
+
+# Page config
+st.set_page_config(
+    page_title="AI Tutor",
+    page_icon="🎓",
+    layout="wide"
+)
+
+
 def main():
     st.title("🎓 AI Tutor")
     
