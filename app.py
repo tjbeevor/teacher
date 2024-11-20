@@ -235,7 +235,7 @@ class AITutor:
             return f"Great! Let's start our lesson on {topic}. We'll cover these subtopics: {', '.join(self.topics)}. Let's begin with {self.current_topic}."
         except json.JSONDecodeError as e:
                 st.error(f"Failed to parse the response from the AI. Error: {str(e)}")
-            return "I'm sorry, but I encountered an error. Let's try again."
+                return "I'm sorry, but I encountered an error. Let's try again."
         except ValueError as e:
             st.error(f"Invalid response format from the AI. Error: {str(e)}")
             return "I'm sorry, but I received an invalid response. Let's try again."
