@@ -208,13 +208,13 @@ class AITutor:
         self.current_topic_index = 0
 
     class AITutor:
-    def __init__(self):
-        self.api_client = APIClient(st.secrets["GOOGLE_API_KEY"])
-        self.quiz_generator = QuizGenerator(self.api_client)
-        self.progress_tracker = ProgressTracker()
-        self.current_topic = None
-        self.topics = []
-        self.current_topic_index = 0
+        def __init__(self):
+            self.api_client = APIClient(st.secrets["GOOGLE_API_KEY"])
+            self.quiz_generator = QuizGenerator(self.api_client)
+            self.progress_tracker = ProgressTracker()
+            self.current_topic = None
+            self.topics = []
+            self.current_topic_index = 0
 
     def initialize_session(self, subject, level, prerequisites, topic):
         prompt = f"""
