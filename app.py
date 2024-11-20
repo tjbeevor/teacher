@@ -184,11 +184,17 @@ def main():
     st.markdown("<h1 class='main-header'>🎓 AI Tutor</h1>", unsafe_allow_html=True)
 
     if "api_key" not in st.session_state:
-        # Retrieve API key from secrets.toml
-        api_key = st.secrets["google_gemini"]["api_key"] 
+        try:
+            # Access secrets with the correct path
+            api_key = st.secrets["secrets"]["google_gemini"]["api_key"] 
+        except KeyError:
+            # Handle the KeyError with a helpful error message
+            st.error("API key not found. Check your secrets file and path.")
+            return
+
         st.session_state.api_key = api_key
         st.session_state.tutor = AITutor(api_key)
-        st.experimental_rerun()  # Rerun to initialize the tutor with the API key
+        st.experimental_rerun()
     else:
         # Initialize session state variables
         if 'quiz_active' not in st.session_state:
