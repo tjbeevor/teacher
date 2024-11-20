@@ -70,28 +70,23 @@ Let's start with {self.current_topic}!"""
 
     def teach_topic(self):
         prompt = f"""
-        Create a comprehensive lesson about {self.current_topic}
+        Create an engaging, conversational lesson about {self.current_topic}
         
-        Format your response exactly following this template:
+        Format your response exactly as follows:
         
         [KEY CONCEPT]
-        First, provide a clear, high-level overview (1-2 sentences).
-        Then, break down 3-4 main aspects of the topic in detail.
-        Include important principles, common use cases, and key points to remember.
+        Write a friendly, conversational explanation of the topic.
+        Break it down into 3-4 key points that are easy to understand.
+        Use everyday analogies where possible.
         
         [EXAMPLES]
-        Provide 3-4 practical examples, starting simple and increasing in complexity.
-        Each example should:
-        - Show the code
-        - Explain what it does
-        - Highlight key concepts being demonstrated
-        Include any relevant output or results.
+        Give 2-3 real-world examples that demonstrate the concept.
+        Make them relatable and practical.
         
         [PRACTICE]
-        Create a practice question that:
-        - Tests understanding of multiple aspects covered
-        - Requires practical application
-        - Has a clear, specific goal
+        Ask a conversation-style question that checks understanding.
+        Make it feel like a natural dialogue rather than a formal test.
+        The question should be answerable in a few sentences.
         """
         try:
             response = self.api_client.generate_content(prompt)
@@ -113,126 +108,55 @@ Let's start with {self.current_topic}!"""
             
         except Exception as e:
             st.error(f"Error in lesson generation: {str(e)}")
-            # Provide rich default content
+            # Provide conversational default content
             return {
-                'lesson': """In Python, data types and variables are fundamental building blocks of programming. A variable is a named container that stores data, while a data type defines what kind of data can be stored and what operations can be performed on it.
+                'lesson': """Hey there! Let's talk about Python - it's a really friendly programming language that's perfect for beginners. 
 
-Key Aspects:
+Think of Python as the "English" of programming languages. Just like English tries to be clear and readable, Python uses simple, straightforward commands that almost read like regular sentences.
 
-1. Variable Declaration and Assignment
-   • Variables are created through assignment using the = operator
-   • Names must start with a letter or underscore, followed by letters, numbers, or underscores
-   • Python uses dynamic typing - type is determined automatically based on the assigned value
-   • Variables are case-sensitive (age and Age are different variables)
+Here are the key things that make Python special:
 
-2. Basic Data Types
-   • Numeric Types:
-     - int: Whole numbers (e.g., -1, 0, 42)
-     - float: Decimal numbers (e.g., 3.14, -0.001)
-     - complex: Complex numbers (e.g., 3+4j)
-   • Text Type:
-     - str: Strings of characters (e.g., "Hello", 'Python')
-   • Boolean Type:
-     - bool: True or False values
-   • None Type:
-     - None: Represents absence of value
+1. It's Super Readable
+   Imagine writing instructions for a friend - that's how Python code looks! It uses spacing and simple words instead of complicated symbols.
 
-3. Type Conversion
-   • Implicit conversion: Python automatically converts compatible types
-   • Explicit conversion: Using functions like int(), float(), str()
-   • Type checking using type() function
+2. It's Flexible
+   Python is like a Swiss Army knife - it can do almost anything! Whether you want to build websites, analyze data, or create games, Python's got you covered.
 
-4. Variable Scope
-   • Local variables: Defined within functions
-   • Global variables: Defined outside functions
-   • Namespace considerations
-""",
-                'examples': """1. Basic Variable Assignment and Types
-```python
-# Simple variable assignments
-age = 25                 # Integer
-height = 1.75           # Float
-name = "Alice"          # String
-is_student = True       # Boolean
-has_license = None      # None type
+3. It Has Amazing Tools
+   Think of Python like a huge toolkit where other programmers have already created lots of useful tools (we call them libraries) that you can use in your own projects.
 
-# Checking types
-print(f"age is type: {type(age)}")        # <class 'int'>
-print(f"height is type: {type(height)}")  # <class 'float'>
-print(f"name is type: {type(name)}")      # <class 'str'>
-```
+4. It's Forgiving
+   Unlike some other programming languages that need you to be super specific about everything, Python is more relaxed. It tries to figure out what type of data you're using automatically!""",
+                
+                'examples': """Let me show you what I mean with some everyday examples:
 
-2. Type Conversion and Operations
-```python
-# String to number conversion
-price_str = "19.99"
-price_float = float(price_str)    # Convert string to float
-price_int = int(price_float)      # Convert float to int
+1. Say Hi to Python
+   When you want to show something on the screen, it's as simple as:
+   ```python
+   print("Hi there!")
+   ```
+   That's it! Just like telling someone "Hi there!" in real life.
 
-print(f"String: {price_str}, Float: {price_float}, Int: {price_int}")
-# Output: String: 19.99, Float: 19.99, Int: 19
+2. Working with Information
+   Let's say you're keeping track of temperatures:
+   ```python
+   morning_temp = 65
+   afternoon_temp = 75
+   print(f"The temperature rose {afternoon_temp - morning_temp} degrees today!")
+   ```
+   Python makes it easy to work with numbers just like you would in your head.
 
-# Numeric operations
-total = price_int + 5
-print(f"Total: {total}")  # Output: Total: 24
-```
-
-3. String Operations and Formatting
-```python
-# String concatenation and formatting
-first_name = "John"
-last_name = "Doe"
-age = 30
-
-# Using f-strings (recommended)
-message = f"{first_name} {last_name} is {age} years old"
-
-# Using .format() method
-message2 = "{} {} is {} years old".format(first_name, last_name, age)
-
-# Using + operator
-message3 = first_name + " " + last_name + " is " + str(age) + " years old"
-
-print(message)   # John Doe is 30 years old
-```
-
-4. Complex Variable Usage
-```python
-# Working with multiple types and conversions
-items = ["apple", "banana", "orange"]  # List
-prices = [0.50, 0.75, 0.60]           # List of floats
-quantities = [3, 2, 4]                # List of integers
-
-# Calculate total cost
-total_cost = sum(price * qty for price, qty in zip(prices, quantities))
-
-# Format as currency string
-formatted_cost = f"${total_cost:.2f}"
-
-print(f"Shopping Cart:")
-for item, price, qty in zip(items, prices, quantities):
-    print(f"  {item}: {qty} x ${price:.2f} = ${price * qty:.2f}")
-print(f"Total: {formatted_cost}")
-
-# Output:
-# Shopping Cart:
-#   apple: 3 x $0.50 = $1.50
-#   banana: 2 x $0.75 = $1.50
-#   orange: 4 x $0.60 = $2.40
-# Total: $5.40
-```
-""",
-                'question': """Create a program that does the following:
-
-1. Create three variables:
-   - A string containing your full name
-   - A float containing your height in meters
-   - An integer containing your age
-
-2. Convert your height to feet (1 meter = 3.28084 feet) and round to 2 decimal places
-3. Create an f-string that prints: "My name is [name], I am [age] years old and [height] feet tall."
-
-Show your complete code with all variables and calculations."""
+3. Making Simple Decisions
+   Python can help make decisions, just like you do:
+   ```python
+   time = 12
+   if time < 12:
+       print("Good morning!")
+   else:
+       print("Good afternoon!")
+   ```""",
+                
+                'question': """Now, let's chat! Imagine you're explaining to a friend what makes Python different from other programming languages. What would you say are its two biggest advantages? There's no right or wrong answer - I'd love to hear your thoughts! 😊"""
             }
 
     def evaluate_answer(self, question, answer):
@@ -514,30 +438,25 @@ def main():
         st.session_state.teaching_state = 'wait_for_answer'
         st.rerun()
 
-    elif st.session_state.teaching_state == 'teach_topic':
-        with st.spinner("Preparing your lesson..."):
+    if st.session_state.teaching_state == 'teach_topic':
+        with st.spinner("Getting your lesson ready..."):
             content = st.session_state.tutor.teach_topic()
         
-        if prompt := st.chat_input("Type your answer here..."):
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            evaluation = st.session_state.tutor.evaluate_answer(
-                st.session_state.last_question, prompt
-            )
-            
-            # Format feedback with appropriate emoji
-            if evaluation['evaluation'] == 'correct':
-                feedback = f"✅ Excellent! {evaluation['feedback']}"
-            else:
-                feedback = f"💡 {evaluation['feedback']}"
-            
-            st.session_state.messages.append({"role": "assistant", "content": feedback})
-            
-            if evaluation['move_on']:
-                if st.session_state.tutor.move_to_next_topic():
-                    st.session_state.teaching_state = 'teach_topic'
-                else:
-                    st.session_state.teaching_state = 'finished'
-            st.rerun()
+        message = f"""# {st.session_state.tutor.current_topic}
+
+## 🔑 Let's Understand This!
+{content['lesson']}
+
+## 📝 See It In Action
+{content['examples']}
+
+## ❓ Let's Chat About This
+{content['question']}
+"""
+        st.session_state.messages.append({"role": "assistant", "content": message})
+        st.session_state.last_question = content['question']
+        st.session_state.teaching_state = 'wait_for_answer'
+        st.rerun()
 
     elif st.session_state.teaching_state == 'finished':
         st.success("🎉 Congratulations! You've completed all topics!")
