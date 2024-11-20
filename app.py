@@ -192,60 +192,73 @@ class AITutor:
         except Exception as e:
             return f"Error initializing session: {str(e)}"
 
+
     def send_message(self, message: str) -> str:
         if not st.session_state.messages:
             return "Please start a new session first."
     
         try:
-            # Check if the message seems to be asking for clarification
-            clarification_keywords = ['explain', 'clarify', 'what do you mean', 'could you explain', 'don\'t understand']
+            # Check if the message seems to be asking for clarification or shows uncertainty
+            clarification_keywords = ['explain', 'clarify', 'what do you mean', 'could you explain', 'don\'t understand', 
+                                    'not sure', 'confused', 'don\'t know', 'unclear']
             is_clarification = any(keyword in message.lower() for keyword in clarification_keywords)
-        
+            
             if is_clarification:
                 follow_up_prompt = f"""
-                The student is asking for clarification: "{message}"
-            
-                Please:
-                1. Acknowledge their question positively
-                2. Explain the previous concept again but in a different way
-                3. Use a simple, concrete example
-                4. Check their understanding with a simple yes/no question
-            
-                Keep your response:
-                - More simplified than the previous explanation
-                - Focused on one main idea
-                - Rich with practical examples
-                - Encouraging and patient
+                The student needs clarification: "{message}"
+                
+                Respond as an experienced, patient teacher would:
+                - Start with warm encouragement about their willingness to ask questions
+                - Explain the concept using a real-world analogy first
+                - Then show a concrete coding example
+                - Build from what they already know
+                - Include detailed explanations with your examples
+                - End with a question that connects to their original confusion
+                
+                Make your response detailed, engaging, and conversational, as if you're having 
+                a natural discussion. Avoid using section headers or numbered lists.
                 """
             else:
                 follow_up_prompt = f"""
-                The student's response was: "{message}"
-            
-                Respond in this style:
-                1. Acknowledge their answer with specific encouragement about what they got right
-                2. If needed, gently correct any misconceptions
-                3. Connect their response to the next concept
-                4. Use a concrete example that builds on their understanding
-                5. Ask a question that checks their understanding of this new connection
-            
-                Keep your response:
-                - Natural and conversational
-                - Building on what they already understand
-                - Focused on one main concept at a time
-                - Using practical examples
+                The student responded: "{message}"
+                
+                Respond as an experienced, patient teacher would:
+                - Acknowledge specific parts of their answer that show understanding
+                - If there are misconceptions, use them as a bridge to deeper understanding
+                - Expand on their answer with additional context and connections
+                - Share a detailed example that builds on their current knowledge
+                - Include both the concept and practical application
+                - Ask a thought-provoking follow-up question that extends their thinking
+                
+                Make your response detailed, engaging, and conversational, as if you're having 
+                a natural discussion. Avoid using section headers or numbered lists. Use code 
+                examples where appropriate, but always explain the code thoroughly.
                 """
-        
-            # Get the previous context
-            previous_messages = st.session_state.messages[-2:]  # Get last two messages
+            
+            # Get more context from previous messages
+            previous_messages = st.session_state.messages[-3:]  # Get last three messages for better context
             context = "\n".join([f"{msg['role']}: {msg['content']}" for msg in previous_messages])
-        
-            # Add context to the prompt
-            follow_up_prompt += f"\n\nPrevious context:\n{context}"
-        
+            
+            follow_up_prompt += f"""
+            
+            Previous context:
+            {context}
+            
+            Remember to:
+            - Maintain a warm, encouraging tone
+            - Provide detailed explanations
+            - Use rich, practical examples
+            - Make natural connections between concepts
+            - Keep the conversation flowing naturally
+            - Avoid any instructional metadata or section markers
+            """
+            
             response = self.api_client.generate_content(follow_up_prompt)
             return response
         except Exception as e:
             return f"Error: {str(e)}"
+
+
    
        
    
