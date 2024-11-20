@@ -201,113 +201,82 @@ class AITutor:
             if 'learning_state' not in st.session_state:
                 st.session_state.learning_state = {
                     'current_topic': 'variables',
-                    'phase': 'teaching',  # phases: teaching, question, verification, elaboration, transition
-                    'concept_understood': False,
-                    'difficulty_level': 1,
-                    'topics_covered': [],
-                    'current_concept_points': []
+                    'subtopic_index': 0,
+                    'subtopics': [
+                        {'name': 'variable_basics', 'covered': False},
+                        {'name': 'variable_assignment', 'covered': False},
+                        {'name': 'variable_naming', 'covered': False},
+                        {'name': 'variable_types', 'covered': False}
+                    ],
+                    'phase': 'teaching',  # teaching, question, verification
+                    'last_concept': None,
+                    'last_question': None
                 }
 
             state = st.session_state.learning_state
-            
+            current_subtopic = state['subtopics'][state['subtopic_index']]
+
             if state['phase'] == 'teaching':
-                # Initial teaching phase or continuing explanation
                 follow_up_prompt = f"""
-                You are teaching {state['current_topic']} in Python. Provide:
-                1. A thorough explanation of the concept
-                2. Multiple real-world analogies
-                3. Clear code examples
-                4. Build from simple to complex
+                You are teaching about {current_subtopic['name']} in Python.
                 
-                After the explanation, ask ONE specific question to check understanding.
+                Provide:
+                1. A clear explanation of this specific concept
+                2. A relevant real-world analogy
+                3. A simple code example
+                4. A specific question about what you just taught
                 
-                Make your response:
-                - Rich in detail and examples
-                - Well-structured but conversational
-                - Focused on fundamental understanding
-                - Include practical code examples
+                Stay focused on {current_subtopic['name']} only.
+                Don't introduce new concepts yet.
                 
-                End with a single, clear question about a basic aspect of what you just taught.
+                Track what concept you're teaching with:
+                CONCEPT: [brief description of current concept]
+                
+                End with:
+                QUESTION: [your specific question]
                 """
                 state['phase'] = 'question'
 
-            elif state['phase'] == 'question':
-                # Processing student's answer to our question
-                follow_up_prompt = f"""
-                The student responded: "{message}"
-                
-                If the answer shows understanding:
-                - Confirm their understanding
-                - Add deeper context to enhance their knowledge
-                - Provide a more complex example
-                - Ask a slightly more challenging question about the same concept
-                
-                If the answer shows confusion:
-                - Acknowledge their attempt
-                - Explain the concept differently
-                - Use a new analogy
-                - Provide a simpler example
-                - Ask an easier question about the same concept
-                
-                Keep building on the same concept until mastery is shown.
-                """
-                state['phase'] = 'verification'
-
             elif state['phase'] == 'verification':
-                # Check if ready to move on or need more practice
-                if any(indicator in message.lower() for indicator in ['understand', 'got it', 'makes sense']):
-                    state['concept_understood'] = True
-                    state['phase'] = 'transition'
-                else:
-                    follow_up_prompt = f"""
-                    The student is still working on {state['current_topic']}.
-                    
-                    Based on their response: "{message}"
-                    
-                    Provide:
-                    - A more detailed explanation focusing on any gaps
-                    - A new practical example
-                    - A connection to real-world programming
-                    - A clear question to verify understanding
-                    
-                    Make it conversational and encouraging.
-                    """
-                    state['phase'] = 'elaboration'
-
-            elif state['phase'] == 'elaboration':
-                # Providing more detailed explanation and examples
+                # Process student's answer
                 follow_up_prompt = f"""
-                Based on the ongoing discussion about {state['current_topic']},
-                provide:
-                - Additional examples and use cases
-                - Common pitfalls and how to avoid them
-                - Best practices related to this concept
-                - A question that helps connect these new points
+                The student answered: "{message}"
+                Regarding the concept: {state['last_concept']}
+                Previous question was: {state['last_question']}
                 
-                Keep the tone conversational and build on previous understanding.
+                If they show understanding:
+                - Confirm their understanding
+                - Add more detail about {current_subtopic['name']}
+                - Show another example
+                - Ask a follow-up question about the SAME concept
+                
+                If they show confusion:
+                - Acknowledge their attempt
+                - Explain {current_subtopic['name']} differently
+                - Use a simpler example
+                - Ask an easier question about the SAME concept
+                
+                IMPORTANT: Stay focused on {current_subtopic['name']}.
+                Do NOT introduce new topics or concepts yet.
+                
+                Track with:
+                CONCEPT: [same concept as before]
+                QUESTION: [your follow-up question]
                 """
-                state['phase'] = 'verification'
-
-            elif state['phase'] == 'transition':
-                # Ready to move to next topic
-                state['topics_covered'].append(state['current_topic'])
-                next_topic = self._get_next_topic(state['current_topic'])
-                state['current_topic'] = next_topic
-                state['phase'] = 'teaching'
-                
-                follow_up_prompt = f"""
-                Create a natural transition from {state['topics_covered'][-1]} to {next_topic}.
-                
-                - Briefly summarize what they've learned
-                - Show how it connects to the next topic
-                - Begin teaching the new concept
-                - End with an introductory question about the new topic
-                
-                Make the transition smooth and logical.
-                """
+                state['phase'] = 'question'
 
             response = self.api_client.generate_content(follow_up_prompt)
+            
+            # Parse and store concept and question
+            if 'CONCEPT:' in response:
+                parts = response.split('CONCEPT:')[1].split('QUESTION:')
+                state['last_concept'] = parts[0].strip()
+                if len(parts) > 1:
+                    state['last_question'] = parts[1].strip()
+                    response = response.split('CONCEPT:')[0] + parts[1]  # Remove tracking info from response
+            
             return response
+
         except Exception as e:
             return f"Error: {str(e)}"
 
