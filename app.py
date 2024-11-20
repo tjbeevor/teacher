@@ -113,6 +113,9 @@ class APIClient:
         self.model = genai.GenerativeModel('gemini-pro')
 
     def generate_content(self, prompt: str) -> str:
+        if not prompt:
+            return "I apologize, but I need a prompt to generate a response."
+            
         # Check cache first
         cached_response = self.cache.get_cached_response(prompt)
         if cached_response:
@@ -121,15 +124,22 @@ class APIClient:
         try:
             # Execute in thread pool
             response = self.executor.submit(
-                lambda: self.model.generate_content(prompt).text
+                lambda: self.model.generate_content(prompt)
             ).result()
             
-            # Cache the response
-            self.cache.cache_response(prompt, response)
-            return response
+            # Verify response is not None and has text
+            if response and response.text:
+                # Cache the response
+                self.cache.cache_response(prompt, response.text)
+                return response.text
+            else:
+                return "I apologize, but I couldn't generate a proper response. Let me try a different approach to help you understand variables."
+                
         except Exception as e:
             st.error(f"API Error: {str(e)}")
-            return None
+            return "I apologize, but I encountered an error. Let me try explaining variables in a different way."
+
+
 
 class QuizGenerator:
     def __init__(self, api_client: APIClient):
@@ -215,74 +225,67 @@ class AITutor:
             state = st.session_state.learning_state
             current_subtopic = state['subtopics'][state['subtopic_index']]
 
-            # Initialize follow_up_prompt
-            follow_up_prompt = ""
-
-            if state['phase'] == 'teaching':
-                # Your existing teaching phase prompt...
-                state['phase'] = 'question'
-            
-            elif state['phase'] == 'question':
-                # Handle student's response
+            if message and state['phase'] == 'question':
                 follow_up_prompt = f"""
-                The student answered: "{message}"
-                Previous concept: {state['last_concept']}
+                The student responded: "{message}"
+                Previous concept: Variables and variable assignment
                 
-                Provide:
-                1. Specific acknowledgment of what they understood correctly
-                2. Additional context or clarification where needed
-                3. A concrete example that builds on their understanding
-                4. A follow-up question that goes deeper into the same concept
+                Based on their response, provide:
+                1. Specific acknowledgment of their correct understanding about creating variables
+                2. Elaboration on variable assignment concepts
+                3. A more complex example showing variable usage
+                4. A follow-up question about variable manipulation
                 
                 Make your response:
                 - Detailed and encouraging
-                - Focused on {current_subtopic['name']}
-                - Building on their current understanding
+                - Building on their understanding of variable assignment
+                - Including practical examples
+                - Leading to deeper concepts about variables
                 
-                Track with:
-                CONCEPT: {state['last_concept']}
-                QUESTION: [your follow-up question]
+                Important: Ensure the response forms a complete, coherent explanation
+                that builds on their current understanding.
                 """
                 state['phase'] = 'verification'
             
             elif state['phase'] == 'verification':
-                # Handle the follow-up response
                 follow_up_prompt = f"""
-                The student responded: "{message}"
+                The student is learning about variables in Python.
+                Their previous answer showed basic understanding.
                 
-                If they show good understanding:
-                - Acknowledge their grasp of the concept
-                - Provide more advanced examples
-                - Move towards the next subtopic with a transitional question
+                Provide:
+                1. Confirmation of their understanding
+                2. A more advanced example of variable usage
+                3. Explanation of a related concept (like variable reassignment)
+                4. A question that tests their understanding of this new concept
                 
-                If they need more clarity:
-                - Address any misconceptions
-                - Provide simpler examples
-                - Ask a more basic question about the same concept
+                Make the response detailed and natural, avoiding any meta-language
+                or section markers.
+                """
+                state['phase'] = 'question'
+            
+            else:
+                # Default to teaching if we're in an unknown state
+                follow_up_prompt = f"""
+                Teach the fundamentals of variables in Python.
+                Include:
+                1. Clear explanation with real-world analogies
+                2. Basic examples of variable creation
+                3. Practical use cases
+                4. A simple question to check understanding
                 
-                Stay focused on {current_subtopic['name']}.
-                
-                Track with:
-                CONCEPT: {state['last_concept']}
-                QUESTION: [your next question]
+                Make it conversational and engaging.
                 """
                 state['phase'] = 'question'
 
             response = self.api_client.generate_content(follow_up_prompt)
-            
-            # Parse and store concept and question
-            if 'CONCEPT:' in response:
-                parts = response.split('CONCEPT:')[1].split('QUESTION:')
-                state['last_concept'] = parts[0].strip()
-                if len(parts) > 1:
-                    state['last_question'] = parts[1].strip()
-                    response = response.split('CONCEPT:')[0] + parts[1]  # Remove tracking info
-            
+            if not response:
+                return "Let me try explaining this in a different way. Variables are like labeled containers..."
+                
             return response
 
         except Exception as e:
-            return f"Error: {str(e)}"
-
+            return f"I apologize for the error. Let me try explaining variables again in a different way."
+            
     def _get_next_topic(self, current_topic):
         topics = {
             'variables': 'data_types',
