@@ -213,6 +213,36 @@ class ProgressTracker:
             st.warning(f"Could not save progress: {e}")
 
 def main():
+
+    class AITutor:
+    def __init__(self):
+        if 'GOOGLE_API_KEY' not in st.secrets:
+            st.error("🔑 GOOGLE_API_KEY not found in secrets!")
+            st.stop()
+        self.api_client = APIClient(st.secrets['GOOGLE_API_KEY'])
+        self.quiz_generator = QuizGenerator(self.api_client)
+        self.progress_tracker = ProgressTracker()
+        self.current_subject = None
+        self.current_topic = None
+
+    def initialize_session(self, subject: str, level: str, prerequisites: str, topic: str) -> str:
+        self.current_subject = subject
+        self.current_topic = topic
+        prompt = f"""As an AI tutor, create an introductory message for a {level} level student 
+        learning {topic} in {subject}. Their background: {prerequisites}"""
+        return self.api_client.generate_content(prompt)
+
+    def send_message(self, message: str) -> str:
+        prompt = f"""As a tutor teaching {self.current_topic} in {self.current_subject}, 
+        respond to: {message}"""
+        return self.api_client.generate_content(prompt)
+
+
+
+
+
+
+    
     if 'tutor' not in st.session_state:
         st.session_state.tutor = AITutor()
 
