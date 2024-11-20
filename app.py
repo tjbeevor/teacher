@@ -95,13 +95,13 @@ st.markdown("""
 class CachingSystem:
     def __init__(self):
         self.cache = {}
-        self.cache_ttl = 3600 # Cache TTL in seconds
+        self.cache_ttl = 3600  # 1 hour
 
-@lru_cache(maxsize=100)
-def get_cached_response(self, prompt):
+    @lru_cache(maxsize=100)
+    def get_cached_response(self, prompt: str):
         return self.cache.get(prompt)
 
-def cache_response(self, prompt, response):
+    def cache_response(self, prompt: str, response: str):
         self.cache[prompt] = response
 
 class APIClient:
@@ -139,13 +139,29 @@ class APIClient:
             return "I apologize, but I encountered an error. Let me try explaining variables in a different way."
 
 class QuizGenerator:
-    def __init__(self, api_client):
+    def __init__(self, api_client: APIClient):
         self.api_client = api_client
 
-    def generate_quiz(self, subject, topic, difficulty, num_questions=5):
-        prompt = f"""Create a quiz about {topic} in {subject} at {difficulty} level.
-                     Generate exactly {num_questions} questions based on what we've discussed."""
-        
+    def generate_quiz(self, subject: str, topic: str, difficulty: str, num_questions: int = 5) -> dict:
+        prompt = f"""Create a quiz about {topic} in {subject} at {difficulty} level. 
+        Generate exactly {num_questions} questions based on what we've discussed. 
+        Format each question like this:
+        {{
+            "questions": [
+                {{
+                    "question": "Write a clear, focused question about a single concept",
+                    "options": [
+                        "A) First option",
+                        "B) Second option",
+                        "C) Third option",
+                        "D) Fourth option"
+                    ],
+                    "correct_answer": "A) First option",
+                    "explanation": "Brief explanation of why this answer is correct"
+                }}
+            ]
+        }}"""
+
         try:
             response = self.api_client.generate_content(prompt)
             return json.loads(response)
@@ -200,7 +216,7 @@ class AITutor:
         Keep your responses natural and conversational.
         """
         
-    return self.api_client.generate_content(prompt)
+        return self.api_client.generate_content(prompt)
 
     def send_message(self, message):
         prompt = f"""
@@ -211,72 +227,156 @@ class AITutor:
 
 def main():
     if 'tutor' not in st.session_state:
-    st.session_state.tutor = AITutor()
+        st.session_state.tutor = AITutor()
 
     chat_col, viz_col = st.columns([2, 1])
 
     with st.sidebar:
-    st.markdown("""
-    <div style='text-align:center;'>
-    <h3 style='color:#1E3A8A;'>Session Configuration</h3>
-    </div>
-    """, unsafe_allow_html=True)
+        st.markdown("""
+        <div style='text-align: center; padding-bottom: 1rem;'>
+            <h3 style='color: #1E3A8A;'>Session Configuration</h3>
+        </div>
+        """, unsafe_allow_html=True)
 
-    user_name = st.text_input("👤 Your Name")
-    subjects = ["Python Programming", "Mathematics", "Physics", "Chemistry",
-    "Biology", "History", "Literature", "Economics"]
-    subject = st.selectbox("📚 Select Subject", subjects)
-    levels = ["Beginner", "Intermediate", "Advanced"]
-    level = st.selectbox("📊 Select Level", levels)
-    topic = st.text_input("🎯 Specific Topic")
-    prerequisites = st.text_area("🔍 Your Background/Prerequisites")
+        user_name = st.text_input("👤 Your Name")
+        subjects = [
+            "Python Programming",
+            "Mathematics",
+            "Physics",
+            "Chemistry",
+            "Biology",
+            "History",
+            "Literature",
+            "Economics"
+        ]
+        subject = st.selectbox("📚 Select Subject", subjects)
+        levels = ["Beginner", "Intermediate", "Advanced"]
+        level = st.selectbox("📊 Select Level", levels)
+        topic = st.text_input("🎯 Specific Topic")
+        prerequisites = st.text_area("🔍 Your Background/Prerequisites")
 
-    if st.button("🚀 Start New Session"):
-    if not topic or not prerequisites:
-    st.error("⚠️ Please fill in both Topic and Prerequisites")
-    else:
-    with st.spinner("🔄 Initializing your session..."):
-    response = st.session_state.tutor.initialize_session(
-    subject, level, prerequisites, topic
-    )
-    st.session_state.messages.append({"role": "assistant", "content": response})
-    st.success("✨ Session started!")
+        if st.button("🚀 Start New Session"):
+            if not topic or not prerequisites:
+                st.error("⚠️ Please fill in both Topic and Prerequisites")
+            else:
+                with st.spinner("🔄 Initializing your session..."):
+                    response = st.session_state.tutor.initialize_session(
+                        subject, level, prerequisites, topic
+                    )
+                    st.session_state.messages = []
+                    st.session_state.messages.append({"role": "assistant", "content": response})
+                st.success("✨ Session started!")
 
-    if st.button("🔄 Reset Session"):
-    st.session_state.messages.clear()
-    st.experimental_rerun()
+        if st.button("🔄 Reset Session"):
+            st.session_state.messages = []
+            st.session_state.quiz_active = False
+            st.session_state.current_quiz = None
+            st.session_state.quiz_score = 0
+            st.session_state.current_question = 0
+            st.experimental_rerun()
 
     with chat_col:
-    st.markdown("""
-    <div class='chat-container'>
-    <h3 style='color:#1E3A8A;'>💬 Learning Conversation</h3>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-    st.markdown(message["content"])
-    
-    if prompt := st.chat_input("💭 Type your response here..."):
-    with st.chat_message("user"):
-    st.markdown(prompt)
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    
-    with st.chat_message("assistant"):
-    with st.spinner("🤔 Thinking..."):
-    response = st.session_state.tutor.send_message(prompt)
-    st.markdown(response)
-    st.session_state.messages.append({"role": "assistant", "content": response})
-    
-    with viz_col:
-    st.markdown("""
-    <div class='chat-container'>
-    <h3 style='color:#1E3A8A;'>📈 Learning Progress</h3>
-    </div>
-    """, unsafe_allow_html=True)
+        st.markdown("""
+        <div class='chat-container'>
+            <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>💬 Learning Conversation</h3>
+        </div>
+        """, unsafe_allow_html=True)
 
-    if __name__ == "__main__":
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        if prompt := st.chat_input("💭 Type your response here..."):
+            with st.chat_message("user"):
+                st.markdown(prompt)
+            st.session_state.messages.append({"role": "user", "content": prompt})
+
+            with st.chat_message("assistant"):
+                with st.spinner("🤔 Thinking..."):
+                    response = st.session_state.tutor.send_message(prompt)
+                st.markdown(response)
+                st.session_state.messages.append({"role": "assistant", "content": response})
+
+    with viz_col:
+        st.markdown("""
+        <div class='chat-container'>
+            <h3 style='color: #1E3A8A; margin-bottom: 1rem;'>📈 Learning Progress</h3>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if st.button("📝 Take Quiz"):
+            if not topic:
+                st.error("⚠️ Please start a session first")
+            else:
+                st.session_state.quiz_active = True
+                with st.spinner("⚙️ Generating quiz..."):
+                    quiz_data = st.session_state.tutor.quiz_generator.generate_quiz(
+                        subject, topic, level
+                    )
+                    if quiz_data:
+                        st.session_state.current_quiz = quiz_data
+                        st.session_state.quiz_score = 0
+                        st.session_state.current_question = 0
+
+        if st.session_state.quiz_active and st.session_state.current_quiz:
+            quiz_data = st.session_state.current_quiz
+            current_q = st.session_state.current_question
+
+            if current_q < len(quiz_data['questions']):
+                question = quiz_data['questions'][current_q]
+                st.subheader(f"Question {current_q + 1}")
+                st.write(question['question'])
+                answer = st.radio(
+                    "Select your answer:",
+                    question['options'],
+                    key=f"q_{current_q}"
+                )
+
+                if st.button("Submit Answer", key=f"submit_{current_q}"):
+                    if answer == question['correct_answer']:
+                        st.session_state.quiz_score += 1
+                        st.success("✅ Correct!")
+                    else:
+                        st.error(f"❌ Incorrect. {question['explanation']}")
+
+                    if current_q < len(quiz_data['questions']) - 1:
+                        st.session_state.current_question += 1
+                        st.experimental_rerun()
+                    else:
+                        final_score = (st.session_state.quiz_score / len(quiz_data['questions'])) * 100
+                        st.session_state.tutor.progress_tracker.save_progress(
+                            user_name, subject, topic, final_score
+                        )
+                        st.session_state.quiz_active = False
+                        st.success(f"🎉 Quiz completed! Score: {final_score}%")
+
+        try:
+            progress_data = st.session_state.tutor.progress_tracker.load_history()
+            if progress_data and len(progress_data) > 0:
+                df = pd.DataFrame(progress_data)
+                fig = px.line(
+                    df, 
+                    x='timestamp', 
+                    y='score', 
+                    color='subject',
+                    title='Performance Over Time',
+                    template='seaborn'
+                )
+                fig.update_layout(
+                    plot_bgcolor='white',
+                    paper_bgcolor='white',
+                    font={'color': '#1E3A8A'},
+                    title={'font': {'size': 20}},
+                    xaxis={'gridcolor': '#E2E8F0'},
+                    yaxis={'gridcolor': '#E2E8F0'}
+                )
+                st.plotly_chart(fig, use_container_width=True)
+        except Exception as e:
+            st.warning("No progress data available yet.")
+
+if __name__ == "__main__":
     try:
-    main()
+        main()
     except Exception as e:
-    st.error(f"An error occurred: {str(e)}")
+        st.error(f"An error occurred: {str(e)}")
+        st.error("Please refresh the page and try again.")
