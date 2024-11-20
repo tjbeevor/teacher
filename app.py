@@ -193,24 +193,62 @@ class AITutor:
             return f"Error initializing session: {str(e)}"
 
     def send_message(self, message: str) -> str:
-        if not st.session_state.messages:
-            return "Please start a new session first."
+    if not st.session_state.messages:
+        return "Please start a new session first."
+    
+    try:
+        # Check if the message seems to be asking for clarification
+        clarification_keywords = ['explain', 'clarify', 'what do you mean', 'could you explain', 'don\'t understand']
+        is_clarification = any(keyword in message.lower() for keyword in clarification_keywords)
         
-        try:
+        if is_clarification:
+            follow_up_prompt = f"""
+            The student is asking for clarification: "{message}"
+            
+            Please:
+            1. Acknowledge their question positively
+            2. Explain the previous concept again but in a different way
+            3. Use a simple, concrete example
+            4. Check their understanding with a simple yes/no question
+            
+            Keep your response:
+            - More simplified than the previous explanation
+            - Focused on one main idea
+            - Rich with practical examples
+            - Encouraging and patient
+            """
+        else:
             follow_up_prompt = f"""
             The student's response was: "{message}"
             
-            Structure your response in these parts:
-            1. First, acknowledge their answer directly with encouragement
-            2. Provide specific feedback
-            3. Teach the next concept in detail
-            4. End with a thought-provoking question"""
+            Respond in this style:
+            1. Acknowledge their answer with specific encouragement about what they got right
+            2. If needed, gently correct any misconceptions
+            3. Connect their response to the next concept
+            4. Use a concrete example that builds on their understanding
+            5. Ask a question that checks their understanding of this new connection
             
-            response = self.api_client.generate_content(follow_up_prompt)
-            return response
-        except Exception as e:
-            return f"Error: {str(e)}"
-
+            Keep your response:
+            - Natural and conversational
+            - Building on what they already understand
+            - Focused on one main concept at a time
+            - Using practical examples
+            """
+        
+        # Get the previous context
+        previous_messages = st.session_state.messages[-2:]  # Get last two messages
+        context = "\n".join([f"{msg['role']}: {msg['content']}" for msg in previous_messages])
+        
+        # Add context to the prompt
+        follow_up_prompt += f"\n\nPrevious context:\n{context}"
+        
+        response = self.api_client.generate_content(follow_up_prompt)
+        return response
+    except Exception as e:
+        return f"Error: {str(e)}"
+   
+       
+   
 class ProgressTracker:
     def __init__(self):
         self.history_file = "progress_history.json"
