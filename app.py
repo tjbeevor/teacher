@@ -198,100 +198,94 @@ class AITutor:
             return "Please start a new session first."
         
         try:
-            # Initialize learning state if not exists
-            if 'learning_state' not in st.session_state:
-                st.session_state.learning_state = {
+            # Initialize learning progression if not exists
+            if 'learning_progression' not in st.session_state:
+                st.session_state.learning_progression = {
                     'current_topic': 'variables',
-                    'phase': 'introduction',  # introduction, example, practice, assessment
-                    'questions_asked': 0,
-                    'understanding_confirmed': False
+                    'subtopics': [
+                        'basic_assignment',
+                        'data_types',
+                        'multiple_assignments',
+                        'variable_naming',
+                        'best_practices'
+                    ],
+                    'current_subtopic': 0,
+                    'understanding_level': 0,  # 0: introduction, 1: basic understanding, 2: mastery
+                    'examples_given': 0
                 }
 
-            # Track if the student is asking for practice
-            practice_request = any(word in message.lower() for word in ['practice', 'exercise', 'question', 'quiz', 'test'])
-            
-            if practice_request:
-                follow_up_prompt = f"""
-                Create a single, practical question about {st.session_state.learning_state['current_topic']} 
-                that builds on our previous discussion. The question should:
-                - Be specific and focused
-                - Require application of knowledge
-                - Include context from our discussion
-                - Be answerable without additional information
+            # Check if student has demonstrated understanding and is ready to move on
+            understanding_indicators = [
+                'got it', 'understand', 'makes sense', 'i see', 
+                'next topic', 'move on', 'what else'
+            ]
+            ready_to_advance = any(indicator in message.lower() for indicator in understanding_indicators)
+
+            if st.session_state.learning_progression['examples_given'] >= 2 and ready_to_advance:
+                # Move to next subtopic
+                st.session_state.learning_progression['current_subtopic'] += 1
+                st.session_state.learning_progression['examples_given'] = 0
                 
-                Ask only ONE question and wait for the student's response.
-                Avoid listing multiple questions or providing answers.
+                follow_up_prompt = f"""
+                The student has shown understanding of the current concept. 
+                Current subtopic: {st.session_state.learning_progression['subtopics'][st.session_state.learning_progression['current_subtopic']]}
+                Previous subtopic: {st.session_state.learning_progression['subtopics'][st.session_state.learning_progression['current_subtopic']-1]}
+
+                Provide:
+                1. A brief summary of what they've learned
+                2. A natural transition to the new subtopic
+                3. A rich, practical example of the new concept
+                4. A thought-provoking question about the new concept
+
+                Example format:
+                "Excellent! You've shown a good understanding of [previous concept]. 
+                Now that you know [previous concept], let's explore [new concept].
+                [Detailed explanation with practical example]
+                [Single engaging question]"
+
+                Make the response detailed and engaging, using real-world analogies 
+                and practical coding examples.
                 """
             else:
-                # Determine appropriate response based on learning phase
-                if st.session_state.learning_state['phase'] == 'introduction':
-                    if 'yes' in message.lower() or 'understand' in message.lower():
-                        # Move to example phase only after checking understanding
-                        follow_up_prompt = """
-                        Ask a specific question to verify their understanding before moving on.
-                        Make it a practical question that requires them to apply what they've learned.
-                        Ask only ONE question and wait for their response.
-                        """
-                        st.session_state.learning_state['phase'] = 'example'
-                    else:
-                        follow_up_prompt = f"""
-                        Explain the concept in a different way, using a new analogy.
-                        Then ask a specific question to check understanding.
-                        Focus on one aspect and wait for their response.
-                        """
-                elif st.session_state.learning_state['phase'] == 'example':
-                    # Evaluate their answer and provide appropriate feedback
-                    follow_up_prompt = f"""
-                    Based on their response: "{message}"
-                    
-                    If their answer shows understanding:
-                    - Acknowledge what they got right
-                    - Provide a more challenging question
-                    - Wait for their response
-                    
-                    If their answer shows confusion:
-                    - Clarify the misunderstanding
-                    - Provide a simpler example
-                    - Ask an easier question
-                    - Wait for their response
-                    
-                    Only ask ONE question at a time.
-                    """
-                elif st.session_state.learning_state['phase'] == 'practice':
-                    # Provide feedback on their practice answer
-                    follow_up_prompt = f"""
-                    Based on their response: "{message}"
-                    
-                    Provide specific feedback and:
-                    - Point out what they did well
-                    - Address any misconceptions
-                    - Ask a follow-up question that builds on their answer
-                    - Wait for their response
-                    
-                    Keep focus on one concept and avoid multiple questions.
-                    """
+                # Continue with current topic but advance the complexity
+                follow_up_prompt = f"""
+                Based on the student's response: "{message}"
+                Current subtopic: {st.session_state.learning_progression['subtopics'][st.session_state.learning_progression['current_subtopic']]}
+                Examples given: {st.session_state.learning_progression['examples_given']}
 
-            # Get context from previous messages
+                If the response shows understanding:
+                - Acknowledge their correct understanding
+                - Provide a more complex example of the current concept
+                - Show how this concept connects to real-world programming
+                - Ask a single, thought-provoking question that builds on their knowledge
+
+                If the response shows confusion:
+                - Clarify any misconceptions
+                - Provide a different explanation with a new analogy
+                - Include a detailed, practical example
+                - Ask a simpler question to build confidence
+
+                Make your response detailed and rich with examples. Include code samples 
+                where appropriate, and ensure examples are practical and realistic.
+                Avoid repetitive analogies and build complexity gradually.
+                """
+
+            st.session_state.learning_progression['examples_given'] += 1
+            
+            # Add previous context
             previous_messages = st.session_state.messages[-3:]
             context = "\n".join([f"{msg['role']}: {msg['content']}" for msg in previous_messages])
-            
-            follow_up_prompt += f"""
-            Previous context:
-            {context}
-            
-            Remember to:
-            - Keep the conversation natural and encouraging
-            - Ask only one question at a time
-            - Wait for student response before moving on
-            - Use practical, real-world examples
-            - Avoid listing multiple questions or answers
-            """
+            follow_up_prompt += f"\n\nPrevious context:\n{context}"
             
             response = self.api_client.generate_content(follow_up_prompt)
             return response
         except Exception as e:
             return f"Error: {str(e)}"
 
+
+
+
+    
     def get_topic_content(self, topic: str) -> str:
         topic_content = {
             "variables_basics": "Introduction to variables and basic assignments",
