@@ -312,7 +312,7 @@ def main():
         # Display existing messages
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
-                st.markdown(message["content"])
+                st.markdown(message["content"], unsafe_allow_html=True)
 
         # Main teaching flow
         if st.session_state.teaching_state == 'initialize':
@@ -325,9 +325,9 @@ def main():
                 intro_message = f"""# 📚 Let's learn about {topic}!
 
 ## Learning Path
-{chr(10).join(f'{i+1}. {t}' for i, t in enumerate(topics))}
+{chr(10).join(f'**{i+1}.** {t}' for i, t in enumerate(topics))}
 
-Let's start with {topics[0]}!"""
+Let's start with **{topics[0]}**!"""
                 
                 st.session_state.messages = [{"role": "assistant", "content": intro_message}]
                 st.session_state.current_topic_index = 0
@@ -340,21 +340,21 @@ Let's start with {topics[0]}!"""
                 current_topic = st.session_state.topics[st.session_state.current_topic_index]
                 lesson = st.session_state.tutor.generate_lesson(current_topic, level)
                 
-                lesson_message = f"""# {current_topic}
+                lesson_message = f"""# **{current_topic}**
 
-## Learning Objectives
+## **Learning Objectives**
 {lesson.get('objectives', '')}
 
-## Introduction
+## **Introduction**
 {lesson.get('introduction', '')}
 
-## Core Concepts
+## **Core Concepts**
 {lesson.get('core_concepts', '')}
 
-## Examples
+## **Examples**
 {lesson.get('examples', '')}
 
-## Practice Question
+## **Practice Question**
 {lesson.get('practice', '')}"""
 
                 st.session_state.messages.append({"role": "assistant", "content": lesson_message})
@@ -420,10 +420,3 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         st.error(f"Error during startup: {str(e)}")
-
-
-
-
-
-
-
