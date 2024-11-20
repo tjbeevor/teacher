@@ -210,71 +210,90 @@ class AITutor:
             if 'learning_state' not in st.session_state:
                 st.session_state.learning_state = {
                     'current_topic': 'variables',
-                    'current_question': None,
-                    'phase': 'teaching',
-                    'last_response': None
+                    'understanding_level': 'beginner',
+                    'last_question': None,
+                    'last_response': None,
+                    'concepts_covered': []
                 }
 
             state = st.session_state.learning_state
 
-            if message.lower() in ['not sure', "i don't know", 'unclear']:
+            # If they've answered our previous question
+            if state['last_question'] == "Can you explain to me how variables work in Python?":
                 follow_up_prompt = f"""
-                The student has indicated they're unsure about variables.
-
+                The student answered: "{message}"
+                Current topic: Variables in Python
+                
                 Create a response that:
-                1. Acknowledges their honesty about being unsure
-                2. Provides a very simple, relatable explanation
-                3. Uses a real-world analogy
-                4. Gives a basic example
-                5. Asks a simple question to check understanding
-
-                Keep the response:
-                - Very basic and clear
-                - Using familiar concepts
-                - Encouraging and supportive
-                - Building foundation before complexity
-
-                Format as:
-                DISPLAY:
-                [Your response and simple question]
-
-                ANSWER_KEY:
-                [Expected answer]
-
-                Do not switch topics or include answers in the display text.
+                1. First, acknowledge their partial understanding about variables storing data
+                2. Build on what they got right - variables do store data for applications
+                3. Gently clarify any misconceptions
+                4. Use a clear, relatable analogy
+                5. Show practical examples that demonstrate the concept
+                6. Ask a question that checks their refined understanding
+                
+                Make your response:
+                - Encouraging but thorough
+                - Building on their existing knowledge
+                - Rich with examples
+                - Natural and conversational
+                
+                Never default to a basic explanation if they've shown partial understanding.
+                Respond directly to what they've said and help them expand their knowledge.
                 """
 
-                state['phase'] = 'basic_understanding'
+            elif "color = 'blue'" in message.lower():
+                follow_up_prompt = f"""
+                The student has correctly written a variable assignment: Color = 'blue'
+                
+                Provide a response that:
+                1. Enthusiastically acknowledges their correct syntax
+                2. Explains specifically why their answer is correct
+                3. Shows what we can do with their color variable
+                4. Demonstrates a slightly more advanced concept with their example
+                5. Asks a thought-provoking question about using their color variable
+                
+                For example:
+                - Praise their correct use of quotes for the string
+                - Show how to use their color variable in a print statement
+                - Demonstrate string concatenation with their example
+                - Ask about combining their variable with other strings
+                
+                Keep it encouraging and building on their success.
+                """
 
             response = self.api_client.generate_content(follow_up_prompt)
             
-            if 'DISPLAY:' in response:
-                parts = response.split('DISPLAY:')[1].split('ANSWER_KEY:')
-                display_text = parts[0].strip()
-                if len(parts) > 1:
-                    state['last_response'] = message
-                    state['current_question'] = display_text.split('?')[0] + '?'
-                return display_text
+            # Update state
+            state['last_response'] = message
             
             return response
 
         except Exception as e:
-            # Create a contextual response for uncertainty
-            return """
-            That's perfectly okay! Let me explain variables in a simpler way.
+            # Create a context-aware fallback response
+            if "color = 'blue'" in message.lower():
+                return """
+                Excellent work! You've written that perfectly. Your code 'Color = "blue"' creates 
+                a variable named 'Color' and stores the text "blue" in it. I like that you 
+                remembered to use quotes around 'blue' since it's a string (text).
 
-            Think of a variable like a labeled box. If you have a box labeled "age", 
-            you can put a number in it. If you have a box labeled "name", you can 
-            put text in it.
+                Let's do something interesting with your color variable:
+                ```python
+                Color = "blue"
+                message = "My favorite color is " + Color
+                print(message)   # This will display: My favorite color is blue
+                ```
 
-            For example:
-            ```python
-            age = 10    # This creates a box labeled "age" and puts 10 in it
-            ```
-
-            Can you tell me what you think would happen if we created a box 
-            labeled "color" and put "blue" in it? How would we write that in Python?
-            """
+                Can you think of how we might create and use another variable to store 
+                your second favorite color and combine it with the first one in a message?
+                """
+            else:
+                return """
+                I see you're working to understand variables. You're right that variables 
+                store data, but let's explore this concept a bit more deeply. Could you 
+                try creating a simple variable that stores your favorite number? I'll help 
+                you understand how it works step by step.
+                """
             
     def _get_next_topic(self, current_topic):
         topics = {
