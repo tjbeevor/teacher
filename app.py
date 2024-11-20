@@ -71,249 +71,77 @@ Let's start with {self.current_topic}!"""
     def teach_topic(self):
         current_topic = self.current_topic
         
-        prompt = f"""Create a comprehensive programming tutorial about {current_topic}. Format your response exactly as follows:
+        prompt = f"""You are an expert Python programming tutor. Create a detailed lesson about {current_topic}.
+        Structure your response exactly as shown below, including all sections and proper formatting:
     
-    [CONCEPT]
+    [LESSON]
     # {current_topic}
     
-    ## Introduction
-    Write a thorough introduction explaining what {current_topic} is, why it's important, and how it fits into Python programming.
+    ## Overview
+    [Write a thorough introduction explaining the concept]
     
-    ## Core Concepts
-    Break down all the essential components of {current_topic}, explaining:
-    - Each concept in detail
-    - How they work
-    - When to use them
-    - Common pitfalls to avoid
-    - Best practices
+    ## Key Components
+    [List and explain all major components and concepts]
     
-    ## Technical Details
-    Provide in-depth technical information about:
-    - Syntax rules and conventions
-    - Implementation details
-    - Performance considerations
-    - Memory management (if applicable)
-    - Common errors and how to avoid them
+    ## Detailed Explanation
+    [Provide in-depth technical details and explanations]
     
-    ## Best Practices
-    List and explain:
-    - Recommended approaches
-    - Code style guidelines
-    - Optimization tips
-    - Debugging strategies
-    - Common mistakes to avoid
+    ## Common Pitfalls and Best Practices
+    [List important considerations and recommendations]
     
     [EXAMPLES]
-    Provide multiple practical examples, starting with basic concepts and progressing to more complex implementations. Include:
-    
-    ## Basic Examples
+    # Basic Usage
     ```python
-    # Include 2-3 basic examples with detailed explanations
+    [Include basic example code]
     ```
+    [Explain the basic example]
     
-    ## Intermediate Examples
+    # Intermediate Usage
     ```python
-    # Include 2-3 intermediate examples showing more complex usage
+    [Include intermediate example code]
     ```
+    [Explain the intermediate example]
     
-    ## Advanced Examples
+    # Advanced Usage
     ```python
-    # Include 1-2 advanced examples demonstrating real-world applications
+    [Include advanced example code]
     ```
+    [Explain the advanced example]
     
-    For each example:
-    1. Explain what the code does
-    2. Break down key components
-    3. Show expected output
-    4. Discuss potential variations
-    5. Highlight important concepts demonstrated
-    
-    [QUESTION]
-    Create an engaging scenario-based question that:
-    1. Tests understanding of multiple concepts covered
-    2. Relates to real-world application
-    3. Requires critical thinking
-    4. Has multiple valid approaches
-    5. Encourages discussion of trade-offs and best practices
-    
-    Present it in a conversational style, asking the student to explain their reasoning and approach."""
-    
+    [PRACTICE]
+    [Create a practical, real-world scenario question]
+    [Include specific points to consider]
+    """
+        
         try:
+            # Get response from API
             response = self.api_client.generate_content(prompt)
             if not response:
-                raise ValueError("No response generated")
+                return None
     
-            text = response.text
-            sections = text.split('[')
-            lesson = {}
+            # Split into sections
+            content = response.text
+            lesson_section = ""
+            examples_section = ""
+            practice_section = ""
     
-            for section in sections:
-                if section.startswith('CONCEPT]'):
-                    lesson['lesson'] = section.split(']')[1].strip()
-                elif section.startswith('EXAMPLES]'):
-                    lesson['examples'] = section.split(']')[1].strip()
-                elif section.startswith('QUESTION]'):
-                    lesson['question'] = section.split(']')[1].strip()
+            # Extract sections using string manipulation
+            if "[LESSON]" in content and "[EXAMPLES]" in content and "[PRACTICE]" in content:
+                parts = content.split("[LESSON]")[1].split("[EXAMPLES]")
+                lesson_section = parts[0].strip()
+                remaining = parts[1].split("[PRACTICE]")
+                examples_section = remaining[0].strip()
+                practice_section = remaining[1].strip()
     
-            # Default content for Basic Syntax and Data Types
-            if 'Basic Syntax' in current_topic or 'Data Types' in current_topic:
-                default_lesson = """# Basic Syntax and Data Types in Python
-    
-    ## Introduction
-    Python's syntax and data types form the foundation of the language. Understanding these fundamentals is crucial for writing effective, maintainable code. Python's design philosophy emphasizes readability and simplicity, making it an excellent language for beginners while remaining powerful for advanced applications.
-    
-    ## Core Concepts
-    
-    ### Python Syntax Basics
-    * **Indentation**: Unlike other languages that use braces {}, Python uses indentation to define code blocks
-    * **Line Structure**: Each statement typically occupies one line
-    * **Comments**: Use '#' for single-line comments and ''' or \"\"\" for multi-line comments
-    * **Case Sensitivity**: Python is case-sensitive ('name' and 'Name' are different variables)
-    
-    ### Fundamental Data Types
-    1. **Numeric Types**
-       * `int`: Whole numbers (e.g., -1, 0, 42)
-       * `float`: Decimal numbers (e.g., 3.14, -0.001)
-       * `complex`: Complex numbers (e.g., 3+4j)
-    
-    2. **Text Type**
-       * `str`: Strings of characters
-       * Immutable sequences of Unicode characters
-       * Supports multiple operations like slicing and concatenation
-    
-    3. **Boolean Type**
-       * `bool`: True or False values
-       * Used in logical operations and control flow
-    
-    4. **Sequence Types**
-       * `list`: Ordered, mutable sequences
-       * `tuple`: Ordered, immutable sequences
-       * `range`: Represents an immutable sequence of numbers
-    
-    5. **Mapping Type**
-       * `dict`: Key-value pairs
-       * Unordered collection of data
-    
-    6. **Set Types**
-       * `set`: Unordered collection of unique elements
-       * `frozenset`: Immutable version of set
-    
-    ## Technical Details
-    * Variables are dynamically typed
-    * Memory management is handled automatically
-    * Type conversion functions: int(), float(), str(), etc.
-    * Objects are reference counted for garbage collection
-    * Everything in Python is an object
-    
-    ## Best Practices
-    1. Use meaningful variable names
-    2. Follow PEP 8 style guidelines
-    3. Initialize variables before use
-    4. Use type hints for better code documentation
-    5. Consider memory usage for large programs"""
-    
-                default_examples = """## Basic Examples
-    ```python
-    # 1. Variable Assignment and Basic Types
-    name = "Alice"          # String
-    age = 25               # Integer
-    height = 1.75          # Float
-    is_student = True      # Boolean
-    
-    print(f"Name: {name}, Type: {type(name)}")
-    print(f"Age: {age}, Type: {type(age)}")
-    print(f"Height: {height}, Type: {type(height)}")
-    print(f"Is Student: {is_student}, Type: {type(is_student)}")
-    ```
-    
-    ## Intermediate Examples
-    ```python
-    # 2. Working with Multiple Types
-    # List of student records
-    students = [
-        {"name": "Bob", "age": 20, "grades": [85, 90, 88]},
-        {"name": "Carol", "age": 22, "grades": [92, 95, 89]}
-    ]
-    
-    # Calculate average grade for each student
-    for student in students:
-        average = sum(student["grades"]) / len(student["grades"])
-        print(f"{student['name']}'s average grade: {average:.2f}")
-    ```
-    
-    ## Advanced Examples
-    ```python
-    # 3. Complex Data Manipulation
-    from decimal import Decimal
-    from typing import Dict, List, Union
-    
-    def process_transaction(
-        transaction: Dict[str, Union[str, Decimal, List[Dict]]]
-    ) -> Dict[str, Union[Decimal, str]]:
-        \"\"\"Process a financial transaction with precise decimal calculations.\"\"\"
-        
-        # Initialize transaction details
-        items = transaction['items']
-        tax_rate = Decimal('0.08')
-        
-        # Calculate subtotal with precise decimal arithmetic
-        subtotal = sum(Decimal(item['price']) * item['quantity'] 
-                      for item in items)
-        
-        # Calculate tax and total
-        tax = subtotal * tax_rate
-        total = subtotal + tax
-        
-        return {
-            'subtotal': subtotal.quantize(Decimal('0.01')),
-            'tax': tax.quantize(Decimal('0.01')),
-            'total': total.quantize(Decimal('0.01')),
-            'status': 'processed'
-        }
-    
-    # Example usage
-    transaction = {
-        'items': [
-            {'name': 'Widget', 'price': '19.99', 'quantity': 2},
-            {'name': 'Gadget', 'price': '9.99', 'quantity': 3}
-        ]
-    }
-    
-    result = process_transaction(transaction)
-    for key, value in result.items():
-        print(f"{key}: {value}")
-    ```"""
-    
-                default_question = """Let's tackle a real-world programming challenge!
-    
-    Imagine you're building an e-commerce system that needs to handle various types of product data:
-    
-    1. Product information (name, description, category)
-    2. Pricing (regular price, discount price, bulk prices)
-    3. Inventory tracking (current stock, minimum stock level)
-    4. Customer reviews (rating, comment, date)
-    
-    Questions to consider:
-    1. What data types would you choose for each piece of information and why?
-    2. How would you structure this data to make it efficient and maintainable?
-    3. What potential issues might you encounter with different data types?
-    4. How would you handle currency calculations to ensure accuracy?
-    
-    Share your thoughts on how you would approach this design, considering both functionality and performance implications."""
-    
-                return {
-                    'lesson': default_lesson,
-                    'examples': default_examples,
-                    'question': default_question
-                }
-    
-            if all(key in lesson for key in ['lesson', 'examples', 'question']):
-                return lesson
-    
-            raise ValueError("Missing sections in generated content")
+            # Return structured content
+            return {
+                'lesson': lesson_section if lesson_section else "Content generation failed.",
+                'examples': examples_section if examples_section else "Examples not available.",
+                'question': practice_section if practice_section else "Practice question not available."
+            }
     
         except Exception as e:
-            st.error(f"Error generating lesson: {str(e)}")
+            st.error(f"Error in lesson generation: {str(e)}")
             return None
 
     def _generate_introduction(self, topic):
@@ -672,8 +500,6 @@ def main():
 
 
 
-
-
 def main():
     st.title("🎓 AI Tutor")
     
@@ -698,22 +524,17 @@ def main():
 
     if st.session_state.teaching_state == 'initialize':
         if topic and st.button("Start Learning"):
-            with st.spinner("Preparing your learning path..."):
-                response = st.session_state.tutor.initialize_session(
-                    subject, level, prerequisites, topic
-                )
-                st.session_state.messages.append({"role": "assistant", "content": response})
-                st.session_state.teaching_state = 'teach_topic'
-                st.rerun()
+            response = st.session_state.tutor.initialize_session(
+                subject, level, prerequisites, topic
+            )
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            st.session_state.teaching_state = 'teach_topic'
+            st.rerun()
 
     elif st.session_state.teaching_state == 'teach_topic':
-        try:
-            with st.spinner("Preparing your lesson..."):
-                content = st.session_state.tutor.teach_topic()
-                if not content:
-                    raise ValueError("Failed to generate lesson content")
-                
-                message = f"""# {st.session_state.tutor.current_topic}
+        content = st.session_state.tutor.teach_topic()
+        if content:
+            message = f"""# {st.session_state.tutor.current_topic}
 
 ## 🔑 Key Concepts
 {content['lesson']}
@@ -722,40 +543,33 @@ def main():
 {content['examples']}
 
 ## ❓ Practice Question
-{content['question']}
-"""
-                st.session_state.messages.append({"role": "assistant", "content": message})
-                st.session_state.last_question = content['question']
-                st.session_state.teaching_state = 'wait_for_answer'
-                st.rerun()
-
-        except Exception as e:
-            st.error(f"An error occurred while preparing the lesson: {str(e)}")
-            # Reset to initial state if there's an error
+{content['question']}"""
+            st.session_state.messages.append({"role": "assistant", "content": message})
+            st.session_state.last_question = content['question']
+            st.session_state.teaching_state = 'wait_for_answer'
+            st.rerun()
+        else:
+            st.error("Failed to generate lesson content. Please try again.")
             st.session_state.teaching_state = 'initialize'
             st.rerun()
 
     elif st.session_state.teaching_state == 'wait_for_answer':
-        if prompt := st.chat_input("Share your thoughts..."):
+        prompt = st.chat_input("Share your thoughts...")
+        if prompt:
             st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.spinner("Analyzing your response..."):
-                evaluation = st.session_state.tutor.evaluate_answer(
-                    st.session_state.last_question, prompt
-                )
-                
-                if evaluation['evaluation'] == 'correct':
-                    feedback = f"✨ Great thinking! {evaluation['feedback']}"
+            evaluation = st.session_state.tutor.evaluate_answer(
+                st.session_state.last_question, prompt
+            )
+            
+            feedback = "✨ Great thinking! " + evaluation['feedback'] if evaluation['evaluation'] == 'correct' else "💭 Interesting perspective! " + evaluation['feedback']
+            st.session_state.messages.append({"role": "assistant", "content": feedback})
+            
+            if evaluation['move_on']:
+                if st.session_state.tutor.move_to_next_topic():
+                    st.session_state.teaching_state = 'teach_topic'
                 else:
-                    feedback = f"💭 Interesting perspective! {evaluation['feedback']}"
-                
-                st.session_state.messages.append({"role": "assistant", "content": feedback})
-                
-                if evaluation['move_on']:
-                    if st.session_state.tutor.move_to_next_topic():
-                        st.session_state.teaching_state = 'teach_topic'
-                    else:
-                        st.session_state.teaching_state = 'finished'
-                st.rerun()
+                    st.session_state.teaching_state = 'finished'
+            st.rerun()
 
     elif st.session_state.teaching_state == 'finished':
         st.success("🎉 Congratulations! You've completed all topics!")
@@ -773,10 +587,6 @@ if 'tutor' not in st.session_state:
     st.session_state.tutor = AITutor()
 if 'last_question' not in st.session_state:
     st.session_state.last_question = None
-
-
-
-
 
 
 if __name__ == "__main__":
