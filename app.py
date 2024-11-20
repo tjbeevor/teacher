@@ -69,7 +69,7 @@ Let's start with {self.current_topic}!"""
             return "I'm sorry, but I encountered an error. Please try again."
 
 
-    def teach_topic(self):
+def teach_topic(self):
     prompt = f"""
     Create a comprehensive, university-level lesson about {self.current_topic}
     
@@ -323,6 +323,14 @@ Share your thoughts on how you would approach this challenge, considering factor
     except Exception as e:
         st.error(f"Error in lesson generation: {str(e)}")
         return None
+
+
+
+
+
+
+
+    
 
 
 
