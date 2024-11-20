@@ -264,7 +264,7 @@ class AITutor:
         except ValueError as e:
             st.error(f"Invalid lesson content format. Error: {str(e)}")
             return {"lesson": "I'm sorry, but I received an invalid response. Let's try again.", "examples": "", "question": ""}
-    Let's try again.", "examples": "", "question": ""}
+            Let's try again.", "examples": "", "question": ""}
     
 
     def evaluate_answer(self, question, answer):
