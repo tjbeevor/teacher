@@ -40,9 +40,12 @@ code { font-size: 0.9rem; }
 </style>
 """, unsafe_allow_html=True)
 
-class APIClient:
+class AITutor:
     def __init__(self):
         self.model = genai.GenerativeModel('gemini-pro')
+        self.topics = []
+        self.current_topic_index = 0
+        self.current_topic = None
         self.max_retries = 3
         self.retry_delay = 1
 
@@ -58,13 +61,6 @@ class APIClient:
                     return None
                 time.sleep(self.retry_delay * (attempt + 1))
         return None
-
-class AITutor:
-    def __init__(self):
-        self.api_client = APIClient()
-        self.topics = []
-        self.current_topic_index = 0
-        self.current_topic = None
 
     def generate_curriculum(self, subject: str, level: str, topic: str) -> List[str]:
         prompt = f"""Create a structured learning path for {topic} in {subject} at {level} level.
@@ -84,7 +80,7 @@ class AITutor:
         - Be appropriate for {level} level
         """
 
-        response = self.api_client.generate_with_retry(prompt)
+        response = self.generate_with_retry(prompt)
         if not response:
             return self.get_default_curriculum(topic)
 
@@ -109,8 +105,72 @@ class AITutor:
             f"Advanced {topic}",
             f"Mastering {topic}"
         ]
+class AITutor:
+    def __init__(self):
+        self.model = genai.GenerativeModel('gemini-pro')
+        self.topics = []
+        self.current_topic_index = 0
+        self.current_topic = None
+        self.max_retries = 3
+        self.retry_delay = 1
 
-    def generate_lesson(self, topic: str, level: str) -> Dict[str, str]:
+    def generate_with_retry(self, prompt: str) -> Optional[str]:
+        for attempt in range(self.max_retries):
+            try:
+                response = self.model.generate_content(prompt)
+                if response and response.text:
+                    return response.text
+            except Exception as e:
+                if attempt == self.max_retries - 1:
+                    st.error(f"API Error: {str(e)}")
+                    return None
+                time.sleep(self.retry_delay * (attempt + 1))
+        return None
+
+    def generate_curriculum(self, subject: str, level: str, topic: str) -> List[str]:
+        prompt = f"""Create a structured learning path for {topic} in {subject} at {level} level.
+        Generate exactly 5 sequential subtopics that progressively build understanding.
+        
+        Format EXACTLY as:
+        1. [Topic Name] - Brief description
+        2. [Topic Name] - Brief description
+        3. [Topic Name] - Brief description
+        4. [Topic Name] - Brief description
+        5. [Topic Name] - Brief description
+        
+        Each topic should:
+        - Build on previous knowledge
+        - Be specific and focused
+        - Lead to mastery of {topic}
+        - Be appropriate for {level} level
+        """
+
+        response = self.generate_with_retry(prompt)
+        if not response:
+            return self.get_default_curriculum(topic)
+
+        try:
+            topics = []
+            lines = [line.strip() for line in response.split('\n') if line.strip()]
+            
+            for line in lines:
+                if line[0].isdigit() and '. ' in line and ' - ' in line:
+                    topic_name = line.split(' - ')[0].split('. ')[1].strip()
+                    topics.append(topic_name)
+            
+            return topics if len(topics) == 5 else self.get_default_curriculum(topic)
+        except Exception:
+            return self.get_default_curriculum(topic)
+
+    def get_default_curriculum(self, topic: str) -> List[str]:
+        return [
+            f"Introduction to {topic}",
+            f"Core Concepts of {topic}",
+            f"Applied {topic}",
+            f"Advanced {topic}",
+            f"Mastering {topic}"
+        ]
+def generate_lesson(self, topic: str, level: str) -> Dict[str, str]:
         prompt = f"""Create an engaging lesson about {topic} for {level} level students.
 
 [OBJECTIVES]
@@ -141,14 +201,14 @@ Provide 2 clear examples:
 
 [PRACTICE]
 Create a thought-provoking question that:
-• Tests understanding of multiple concepts
-• Relates to real-world scenarios
-• Requires critical thinking
-• Has multiple valid approaches
+- Tests understanding of multiple concepts
+- Relates to real-world scenarios
+- Requires critical thinking
+- Has multiple valid approaches
 
 Format all content in clear, engaging language appropriate for {level} level."""
 
-        response = self.api_client.generate_with_retry(prompt)
+        response = self.generate_with_retry(prompt)
         if not response:
             return self.get_default_lesson(topic)
 
@@ -188,8 +248,7 @@ Format all content in clear, engaging language appropriate for {level} level."""
             'examples': "Example 1: Basic application\nExample 2: Advanced usage",
             'practice': f"Explain how {topic} works and provide an example."
         }
-
-    def evaluate_answer(self, question: str, answer: str, level: str) -> Dict[str, Any]:
+def evaluate_answer(self, question: str, answer: str, level: str) -> Dict[str, Any]:
         prompt = f"""Evaluate this {level}-level response.
 
 Question: {question}
@@ -198,30 +257,30 @@ Student's Answer: {answer}
 Provide evaluation in this format:
 
 [UNDERSTANDING]
-• List concepts understood correctly
-• Identify any misconceptions
-• Note innovative thinking
+- List concepts understood correctly
+- Identify any misconceptions
+- Note innovative thinking
 
 [FEEDBACK]
-• Specific praise for strong points
-• Areas for improvement
-• Suggested corrections
+- Specific praise for strong points
+- Areas for improvement
+- Suggested corrections
 
 [NEXT STEPS]
-• Topics to review
-• Practice suggestions
-• Extension questions
+- Topics to review
+- Practice suggestions
+- Extension questions
 
 [MASTERY]
 Score each area (1-5):
-• Concept Understanding: [1-5]
-• Application: [1-5]
-• Communication: [1-5]
+- Concept Understanding: [1-5]
+- Application: [1-5]
+- Communication: [1-5]
 
 [MOVE_ON]
 yes/no (Based on demonstrated understanding)"""
 
-        response = self.api_client.generate_with_retry(prompt)
+        response = self.generate_with_retry(prompt)
         if not response:
             return self.get_default_evaluation()
 
@@ -270,7 +329,6 @@ yes/no (Based on demonstrated understanding)"""
             'next_steps': 'Review core concepts and try more practice problems.',
             'move_on': False
         }
-
 def init_session_state():
     if 'initialized' not in st.session_state:
         st.session_state.initialized = False
@@ -338,8 +396,7 @@ Let's start with {topics[0]}!"""
                 st.session_state.teaching_state = 'teach_topic'
                 st.session_state.lesson_generated = False
                 st.rerun()
-
-        elif st.session_state.teaching_state == 'teach_topic':
+elif st.session_state.teaching_state == 'teach_topic':
             if not st.session_state.lesson_generated:
                 current_topic = st.session_state.topics[st.session_state.current_topic_index]
                 lesson = st.session_state.tutor.generate_lesson(current_topic, level)
@@ -368,20 +425,16 @@ Let's start with {topics[0]}!"""
                 st.rerun()
 
         elif st.session_state.teaching_state == 'wait_for_answer':
-            # Get student's answer
             answer = st.chat_input("Your answer...")
             if answer:
-                # Add student's answer to messages
                 st.session_state.messages.append({"role": "user", "content": answer})
                 
-                # Evaluate answer
                 evaluation = st.session_state.tutor.evaluate_answer(
                     st.session_state.last_question,
                     answer,
                     level
                 )
                 
-                # Format feedback
                 feedback_class = (
                     'feedback-positive' if evaluation['evaluation'] == 'correct'
                     else 'feedback-partial' if evaluation['evaluation'] == 'partial'
@@ -400,8 +453,7 @@ Let's start with {topics[0]}!"""
 {evaluation['next_steps']}</div>"""
 
                 st.session_state.messages.append({"role": "assistant", "content": feedback})
-                                
-# Check if we should move to next topic
+                
                 if evaluation['move_on']:
                     st.session_state.current_topic_index += 1
                     if st.session_state.current_topic_index < len(st.session_state.topics):
@@ -413,34 +465,18 @@ Let's start with {topics[0]}!"""
 
         elif st.session_state.teaching_state == 'finished':
             st.success("🎉 Congratulations! You've completed all topics!")
-            
-            # Show summary of topics covered
-            st.markdown("### Topics Mastered")
-            for i, topic in enumerate(st.session_state.topics, 1):
-                st.markdown(f"{i}. {topic}")
-            
             if st.button("Start New Topic"):
                 st.session_state.clear()
                 init_session_state()
                 st.rerun()
 
     except Exception as e:
-        st.error("An unexpected error occurred. Please try resetting the application.")
-        print(f"Error in main(): {str(e)}")
-        
-        if st.button("Reset Application"):
-            st.session_state.clear()
-            init_session_state()
-            st.rerun()
+        st.error(f"An unexpected error occurred: {str(e)}")
+        st.info("Please try resetting the application using the button in the top left corner.")
 
 if __name__ == "__main__":
     try:
         init_session_state()
         main()
     except Exception as e:
-        st.error(f"Application startup error: {str(e)}")
-        if st.button("Restart Application"):
-            st.session_state.clear()
-            st.rerun()
-
-
+        st.error(f"Error during startup: {str(e)}")
