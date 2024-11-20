@@ -85,109 +85,109 @@ class LessonGenerator:
         return "\n".join(formatted_topics)
     
     def generate_lesson(self, topic: str, level: str) -> Dict[str, str]:
-    prompt = f"""Create a comprehensive lesson about {topic} for {level} level students.
+        prompt = f"""Create a comprehensive lesson about {topic} for {level} level students.
+        
+        You must format your response with exactly these sections and markers:
     
-    You must format your response with exactly these sections and markers:
-
-    [OBJECTIVES]
-    List exactly three learning objectives:
-    • First objective using Bloom's taxonomy
-    • Second objective using Bloom's taxonomy
-    • Third objective using Bloom's taxonomy
-
-    [INTRODUCTION]
-    Write 2-3 paragraphs introducing {topic}, including:
-    • Why it's important
-    • Real-world applications
-    • Connection to previous knowledge
-
-    [CORE_CONCEPTS]
-    1. First Main Concept
-       • Detailed explanation
-       • Key terms
-       • Examples
-       • Common mistakes
-
-    2. Second Main Concept
-       • Detailed explanation
-       • Key terms
-       • Examples
-       • Common mistakes
-
-    3. Third Main Concept
-       • Detailed explanation
-       • Key terms
-       • Examples
-       • Common mistakes
-
-    [EXAMPLES]
-    Basic Example:
-    • Step-by-step walkthrough
-    • Expected output
-    • Why it works
-
-    Advanced Example:
-    • Real-world scenario
-    • Complete implementation
-    • Best practices
-
-    [PRACTICE]
-    Create a question that tests understanding of {topic}.
-    • Specific requirements
-    • Success criteria
-    • Key points to address
-    """
-
-    try:
-        response = self.generate_with_retry(prompt)
-        if not response:
+        [OBJECTIVES]
+        List exactly three learning objectives:
+        • First objective using Bloom's taxonomy
+        • Second objective using Bloom's taxonomy
+        • Third objective using Bloom's taxonomy
+    
+        [INTRODUCTION]
+        Write 2-3 paragraphs introducing {topic}, including:
+        • Why it's important
+        • Real-world applications
+        • Connection to previous knowledge
+    
+        [CORE_CONCEPTS]
+        1. First Main Concept
+           • Detailed explanation
+           • Key terms
+           • Examples
+           • Common mistakes
+    
+        2. Second Main Concept
+           • Detailed explanation
+           • Key terms
+           • Examples
+           • Common mistakes
+    
+        3. Third Main Concept
+           • Detailed explanation
+           • Key terms
+           • Examples
+           • Common mistakes
+    
+        [EXAMPLES]
+        Basic Example:
+        • Step-by-step walkthrough
+        • Expected output
+        • Why it works
+    
+        Advanced Example:
+        • Real-world scenario
+        • Complete implementation
+        • Best practices
+    
+        [PRACTICE]
+        Create a question that tests understanding of {topic}.
+        • Specific requirements
+        • Success criteria
+        • Key points to address
+        """
+    
+        try:
+            response = self.generate_with_retry(prompt)
+            if not response:
+                return self.get_default_lesson(topic)
+    
+            # Debug print
+            print(f"Raw API response: {response}")
+    
+            sections = {}
+            current_section = None
+            current_content = []
+    
+            for line in response.split('\n'):
+                if line.strip().startswith('[') and line.strip().endswith(']'):
+                    if current_section and current_content:
+                        content = '\n'.join(current_content)
+                        sections[current_section.lower()] = content
+                    current_section = line.strip()[1:-1]
+                    current_content = []
+                elif line.strip() and current_section:
+                    current_content.append(line.strip())
+    
+            if current_section and current_content:
+                sections[current_section.lower()] = '\n'.join(current_content)
+    
+            # Debug print
+            print(f"Parsed sections: {sections}")
+    
+            result = {
+                'objectives': sections.get('objectives', 'No objectives specified.'),
+                'introduction': sections.get('introduction', 'No introduction available.'),
+                'core_concepts': sections.get('core_concepts', 'No core concepts available.'),
+                'examples': sections.get('examples', 'No examples available.'),
+                'practice': sections.get('practice', 'No practice question available.')
+            }
+    
+            # Format each section with proper markdown
+            formatted_result = {
+                'objectives': f"## Learning Objectives\n{result['objectives']}",
+                'introduction': f"## Introduction\n{result['introduction']}",
+                'core_concepts': f"## Core Concepts\n{result['core_concepts']}",
+                'examples': f"## Examples\n{result['examples']}",
+                'practice': f"## Practice\n{result['practice']}"
+            }
+    
+            # Debug print
+            print(f"Formatted result: {formatted_result}")
+    
+            return formatted_result
+    
+        except Exception as e:
+            print(f"Error in generate_lesson: {str(e)}")
             return self.get_default_lesson(topic)
-
-        # Debug print
-        print(f"Raw API response: {response}")
-
-        sections = {}
-        current_section = None
-        current_content = []
-
-        for line in response.split('\n'):
-            if line.strip().startswith('[') and line.strip().endswith(']'):
-                if current_section and current_content:
-                    content = '\n'.join(current_content)
-                    sections[current_section.lower()] = content
-                current_section = line.strip()[1:-1]
-                current_content = []
-            elif line.strip() and current_section:
-                current_content.append(line.strip())
-
-        if current_section and current_content:
-            sections[current_section.lower()] = '\n'.join(current_content)
-
-        # Debug print
-        print(f"Parsed sections: {sections}")
-
-        result = {
-            'objectives': sections.get('objectives', 'No objectives specified.'),
-            'introduction': sections.get('introduction', 'No introduction available.'),
-            'core_concepts': sections.get('core_concepts', 'No core concepts available.'),
-            'examples': sections.get('examples', 'No examples available.'),
-            'practice': sections.get('practice', 'No practice question available.')
-        }
-
-        # Format each section with proper markdown
-        formatted_result = {
-            'objectives': f"## Learning Objectives\n{result['objectives']}",
-            'introduction': f"## Introduction\n{result['introduction']}",
-            'core_concepts': f"## Core Concepts\n{result['core_concepts']}",
-            'examples': f"## Examples\n{result['examples']}",
-            'practice': f"## Practice\n{result['practice']}"
-        }
-
-        # Debug print
-        print(f"Formatted result: {formatted_result}")
-
-        return formatted_result
-
-    except Exception as e:
-        print(f"Error in generate_lesson: {str(e)}")
-        return self.get_default_lesson(topic)
