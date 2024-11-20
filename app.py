@@ -278,17 +278,17 @@ class AITutor:
         Format your response as a valid JSON object with keys: 'evaluation' (string: 'correct', 'partially_correct', or 'incorrect'), 'feedback' (string), and 'move_on' (boolean).
         """
         response = self.api_client.generate_content(prompt)
-            try:
-                evaluation = json.loads(response)
-                if not all(key in evaluation for key in ['evaluation', 'feedback', 'move_on']):
-                    raise ValueError("Missing required keys in response")
-                return evaluation
-            except json.JSONDecodeError as e:
-                st.error(f"Failed to parse the evaluation. Error: {str(e)}")
-                return {"evaluation": "incorrect", "feedback": "I'm sorry, but I encountered an error. Let's try again.", "move_on": False}
-            except ValueError as e:
-                st.error(f"Invalid evaluation format. Error: {str(e)}")
-                return {"evaluation": "incorrect", "feedback": "I'm sorry, but I received an invalid response. Let's try again.", "move_on": False}
+        try:
+            evaluation = json.loads(response)
+            if not all(key in evaluation for key in ['evaluation', 'feedback', 'move_on']):
+                raise ValueError("Missing required keys in response")
+            return evaluation
+        except json.JSONDecodeError as e:
+            st.error(f"Failed to parse the evaluation. Error: {str(e)}")
+            return {"evaluation": "incorrect", "feedback": "I'm sorry, but I encountered an error. Let's try again.", "move_on": False}
+        except ValueError as e:
+            st.error(f"Invalid evaluation format. Error: {str(e)}")
+            return {"evaluation": "incorrect", "feedback": "I'm sorry, but I received an invalid response. Let's try again.", "move_on": False}
 
 
     
