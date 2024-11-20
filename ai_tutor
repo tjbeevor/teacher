@@ -1,0 +1,231 @@
+import google.generativeai as genai
+import streamlit as st
+import time
+import re
+from typing import Dict, List, Optional, Any
+
+class AITutor:
+    def __init__(self):
+        self.model = genai.GenerativeModel('gemini-pro')
+        self.topics = []
+        self.current_topic_index = 0
+        self.current_topic = None
+        self.max_retries = 3
+        self.retry_delay = 1
+
+    def generate_with_retry(self, prompt: str) -> Optional[str]:
+        for attempt in range(self.max_retries):
+            try:
+                response = self.model.generate_content(prompt)
+                if response and response.text:
+                    return response.text
+            except Exception as e:
+                if attempt == self.max_retries - 1:
+                    st.error(f"API Error: {str(e)}")
+                    return None
+                time.sleep(self.retry_delay * (attempt + 1))
+        return None
+
+    def generate_curriculum(self, subject: str, level: str, topic: str) -> List[str]:
+        prompt = f"""Create a structured learning path for {topic} in {subject} at {level} level.
+        Generate exactly 5 sequential subtopics that progressively build understanding.
+        
+        Format EXACTLY as:
+        1. [Topic Name] - Brief description
+        2. [Topic Name] - Brief description
+        3. [Topic Name] - Brief description
+        4. [Topic Name] - Brief description
+        5. [Topic Name] - Brief description
+        
+        Each topic should:
+        - Build on previous knowledge
+        - Be specific and focused
+        - Lead to mastery of {topic}
+        - Be appropriate for {level} level
+        """
+
+        response = self.generate_with_retry(prompt)
+        if not response:
+            return self.get_default_curriculum(topic)
+
+        try:
+            topics = []
+            lines = [line.strip() for line in response.split('\n') if line.strip()]
+            
+            for line in lines:
+                if line[0].isdigit() and '. ' in line and ' - ' in line:
+                    topic_name = line.split(' - ')[0].split('. ')[1].strip()
+                    topics.append(topic_name)
+            
+            return topics if len(topics) == 5 else self.get_default_curriculum(topic)
+        except Exception:
+            return self.get_default_curriculum(topic)
+
+    def get_default_curriculum(self, topic: str) -> List[str]:
+        return [
+            f"Introduction to {topic}",
+            f"Core Concepts of {topic}",
+            f"Applied {topic}",
+            f"Advanced {topic}",
+            f"Mastering {topic}"
+        ]
+
+    def generate_lesson(self, topic: str, level: str) -> Dict[str, str]:
+        prompt = f"""Create an engaging lesson about {topic} for {level} level students.
+
+[OBJECTIVES]
+List 3 clear learning objectives using Bloom's Taxonomy verbs.
+
+[INTRODUCTION]
+Create an engaging hook and overview of {topic}.
+
+[CORE CONCEPTS]
+Break down {topic} into 3 main ideas:
+1. [Fundamental Concept]
+   • Clear explanation
+   • Simple example
+   • Key terms defined
+2. [Key Principle]
+   • Detailed explanation
+   • Real-world example
+   • Common applications
+3. [Advanced Application]
+   • Complex concepts
+   • Practical usage
+   • Problem-solving approaches
+
+[EXAMPLES]
+Provide 2 clear examples:
+1. Basic example with step-by-step explanation
+2. Advanced example showing practical application
+
+[PRACTICE]
+Create a thought-provoking question that:
+• Tests understanding of multiple concepts
+• Relates to real-world scenarios
+• Requires critical thinking
+• Has multiple valid approaches
+
+Format all content in clear, engaging language appropriate for {level} level."""
+
+        response = self.generate_with_retry(prompt)
+        if not response:
+            return self.get_default_lesson(topic)
+
+        try:
+            sections = {}
+            current_section = None
+            current_content = []
+
+            for line in response.split('\n'):
+                if line.strip().startswith('[') and line.strip().endswith(']'):
+                    if current_section and current_content:
+                        sections[current_section.lower()] = '\n'.join(current_content)
+                    current_section = line.strip()[1:-1]
+                    current_content = []
+                elif line.strip() and current_section:
+                    current_content.append(line.strip())
+
+            if current_section and current_content:
+                sections[current_section.lower()] = '\n'.join(current_content)
+
+            return {
+                'objectives': sections.get('objectives', ''),
+                'introduction': sections.get('introduction', ''),
+                'core_concepts': sections.get('core concepts', ''),
+                'examples': sections.get('examples', ''),
+                'practice': sections.get('practice', '')
+            }
+
+        except Exception:
+            return self.get_default_lesson(topic)
+
+    def get_default_lesson(self, topic: str) -> Dict[str, str]:
+        return {
+            'objectives': f"• Understand basic principles of {topic}\n• Apply key concepts\n• Analyze real-world applications",
+            'introduction': f"Let's explore {topic} and its importance.",
+            'core_concepts': f"Key concepts of {topic}...",
+            'examples': "Example 1: Basic application\nExample 2: Advanced usage",
+            'practice': f"Explain how {topic} works and provide an example."
+        }
+
+    def evaluate_answer(self, question: str, answer: str, level: str) -> Dict[str, Any]:
+        prompt = f"""Evaluate this {level}-level response.
+
+Question: {question}
+Student's Answer: {answer}
+
+Provide evaluation in this format:
+
+[UNDERSTANDING]
+• List concepts understood correctly
+• Identify any misconceptions
+• Note innovative thinking
+
+[FEEDBACK]
+• Specific praise for strong points
+• Areas for improvement
+• Suggested corrections
+
+[NEXT STEPS]
+• Topics to review
+• Practice suggestions
+• Extension questions
+
+[MASTERY]
+Score each area (1-5):
+• Concept Understanding: [1-5]
+• Application: [1-5]
+• Communication: [1-5]
+
+[MOVE_ON]
+yes/no (Based on demonstrated understanding)"""
+
+        response = self.generate_with_retry(prompt)
+        if not response:
+            return self.get_default_evaluation()
+
+        try:
+            evaluation = {}
+            current_section = None
+            current_content = []
+
+            for line in response.split('\n'):
+                if line.strip().startswith('[') and line.strip().endswith(']'):
+                    if current_section and current_content:
+                        evaluation[current_section.lower()] = '\n'.join(current_content)
+                    current_section = line.strip()[1:-1]
+                    current_content = []
+                elif line.strip() and current_section:
+                    current_content.append(line.strip())
+
+            if current_section and current_content:
+                evaluation[current_section.lower()] = '\n'.join(current_content)
+
+            scores = []
+            mastery_text = evaluation.get('mastery', '')
+            score_matches = re.findall(r': (\d+)', mastery_text)
+            scores = [int(score) for score in score_matches if score.isdigit()]
+            average_score = sum(scores) / len(scores) if scores else 3
+
+            move_on = 'yes' in evaluation.get('move_on', '').lower()
+            
+            return {
+                'evaluation': 'correct' if average_score >= 4 else 'partial' if average_score >= 3 else 'incorrect',
+                'understanding': evaluation.get('understanding', ''),
+                'feedback': evaluation.get('feedback', ''),
+                'next_steps': evaluation.get('next steps', ''),
+                'move_on': move_on
+            }
+
+        except Exception:
+            return self.get_default_evaluation()
+
+    def get_default_evaluation(self) -> Dict[str, Any]:
+        return {
+            'evaluation': 'partial',
+            'understanding': 'Shows basic understanding of concepts.',
+            'feedback': 'Good start. Consider adding more specific examples.',
+            'next_steps': 'Review core concepts and try more practice problems.',
+            'move_on': False
+        }
