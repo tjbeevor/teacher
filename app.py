@@ -277,7 +277,7 @@ class AITutor:
 
         Format your response as a valid JSON object with keys: 'evaluation' (string: 'correct', 'partially_correct', or 'incorrect'), 'feedback' (string), and 'move_on' (boolean).
         """
-            response = self.api_client.generate_content(prompt)
+        response = self.api_client.generate_content(prompt)
             try:
                 evaluation = json.loads(response)
                 if not all(key in evaluation for key in ['evaluation', 'feedback', 'move_on']):
