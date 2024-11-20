@@ -92,6 +92,20 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+
+class AITutor:
+    def __init__(self):
+        if 'GOOGLE_API_KEY' not in st.secrets:
+            st.error("🔑 GOOGLE_API_KEY not found in secrets!")
+            st.stop()
+        self.api_client = APIClient(st.secrets['GOOGLE_API_KEY'])
+        self.quiz_generator = QuizGenerator(self.api_client)
+        self.progress_tracker = ProgressTracker()
+        self.current_subject = None
+        self.current_topic = None
+
+
+
 class CachingSystem:
     def __init__(self):
         self.cache = {}
