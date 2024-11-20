@@ -198,80 +198,99 @@ class AITutor:
             return "Please start a new session first."
         
         try:
-            # Initialize topic tracking if not exists
-            if 'current_topic_index' not in st.session_state:
-                st.session_state.current_topic_index = 0
-                st.session_state.topics = [
-                    "variables_basics",
-                    "data_types",
-                    "variable_naming",
-                    "type_conversion",
-                    "variable_scope",
-                    # Add more topics as needed
-                ]
+            # Initialize learning state if not exists
+            if 'learning_state' not in st.session_state:
+                st.session_state.learning_state = {
+                    'current_topic': 'variables',
+                    'phase': 'introduction',  # introduction, example, practice, assessment
+                    'questions_asked': 0,
+                    'understanding_confirmed': False
+                }
 
-            # Check for progression keywords
-            progression_keywords = ['next topic', 'move on', 'continue', 'what\'s next', 'next lesson']
-            is_progression = any(keyword in message.lower() for keyword in progression_keywords)
+            # Track if the student is asking for practice
+            practice_request = any(word in message.lower() for word in ['practice', 'exercise', 'question', 'quiz', 'test'])
             
-            if is_progression:
-                st.session_state.current_topic_index += 1
-                if st.session_state.current_topic_index >= len(st.session_state.topics):
-                    return "Congratulations! You've completed all topics in this session. Would you like to take a quiz to test your knowledge?"
-                
-                current_topic = st.session_state.topics[st.session_state.current_topic_index]
+            if practice_request:
                 follow_up_prompt = f"""
-                Transition naturally to the next topic: {current_topic}. 
+                Create a single, practical question about {st.session_state.learning_state['current_topic']} 
+                that builds on our previous discussion. The question should:
+                - Be specific and focused
+                - Require application of knowledge
+                - Include context from our discussion
+                - Be answerable without additional information
                 
-                Make your response:
-                - Acknowledge completion of previous topic
-                - Naturally bridge to the new topic
-                - Introduce key concepts
-                - Include a practical example
-                - End with an engaging question
-                
-                Keep it conversational and avoid any instructional metadata.
-                """
-            elif any(keyword in message.lower() for keyword in ['explain', 'clarify', 'don\'t understand']):
-                # Your existing clarification handling...
-                follow_up_prompt = f"""
-                The student needs clarification: "{message}"
-                
-                Provide a clear, focused explanation and then suggest moving forward:
-                - Address their specific question
-                - Use simple analogies
-                - Show a practical example
-                - Check understanding
-                - If they understand, suggest moving to the next topic
-                
-                Keep it conversational and natural.
+                Ask only ONE question and wait for the student's response.
+                Avoid listing multiple questions or providing answers.
                 """
             else:
-                # Your existing response handling...
-                follow_up_prompt = f"""
-                The student responded: "{message}"
-                
-                Respond naturally, and if they show understanding:
-                - Acknowledge their comprehension
-                - Build on their response
-                - Give a practical example
-                - Check if they're ready to move on
-                - Suggest the next topic if appropriate
-                
-                Keep it conversational and engaging.
-                """
-            
-            # Get previous context
+                # Determine appropriate response based on learning phase
+                if st.session_state.learning_state['phase'] == 'introduction':
+                    if 'yes' in message.lower() or 'understand' in message.lower():
+                        # Move to example phase only after checking understanding
+                        follow_up_prompt = """
+                        Ask a specific question to verify their understanding before moving on.
+                        Make it a practical question that requires them to apply what they've learned.
+                        Ask only ONE question and wait for their response.
+                        """
+                        st.session_state.learning_state['phase'] = 'example'
+                    else:
+                        follow_up_prompt = f"""
+                        Explain the concept in a different way, using a new analogy.
+                        Then ask a specific question to check understanding.
+                        Focus on one aspect and wait for their response.
+                        """
+                elif st.session_state.learning_state['phase'] == 'example':
+                    # Evaluate their answer and provide appropriate feedback
+                    follow_up_prompt = f"""
+                    Based on their response: "{message}"
+                    
+                    If their answer shows understanding:
+                    - Acknowledge what they got right
+                    - Provide a more challenging question
+                    - Wait for their response
+                    
+                    If their answer shows confusion:
+                    - Clarify the misunderstanding
+                    - Provide a simpler example
+                    - Ask an easier question
+                    - Wait for their response
+                    
+                    Only ask ONE question at a time.
+                    """
+                elif st.session_state.learning_state['phase'] == 'practice':
+                    # Provide feedback on their practice answer
+                    follow_up_prompt = f"""
+                    Based on their response: "{message}"
+                    
+                    Provide specific feedback and:
+                    - Point out what they did well
+                    - Address any misconceptions
+                    - Ask a follow-up question that builds on their answer
+                    - Wait for their response
+                    
+                    Keep focus on one concept and avoid multiple questions.
+                    """
+
+            # Get context from previous messages
             previous_messages = st.session_state.messages[-3:]
             context = "\n".join([f"{msg['role']}: {msg['content']}" for msg in previous_messages])
             
-            follow_up_prompt += f"\n\nPrevious context:\n{context}"
+            follow_up_prompt += f"""
+            Previous context:
+            {context}
+            
+            Remember to:
+            - Keep the conversation natural and encouraging
+            - Ask only one question at a time
+            - Wait for student response before moving on
+            - Use practical, real-world examples
+            - Avoid listing multiple questions or answers
+            """
             
             response = self.api_client.generate_content(follow_up_prompt)
             return response
         except Exception as e:
             return f"Error: {str(e)}"
-
 
     def get_topic_content(self, topic: str) -> str:
         topic_content = {
