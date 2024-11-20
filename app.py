@@ -70,76 +70,105 @@ Let's start with {self.current_topic}!"""
 
     def teach_topic(self):
         prompt = f"""
-        Create a structured lesson about {self.current_topic}.
-        Format your response exactly like this:
-
-        CONCEPT
-        [Write 2-3 clear, concise sentences explaining the core concept]
-
-        EXAMPLES
-        1. [Provide a specific, practical example]
-        2. [Provide another example showing a different aspect]
-
-        PRACTICE
-        [Ask one clear, specific question that tests understanding of the concept]
+        Teaching topic: {self.current_topic}
+        
+        Create a structured lesson with exactly three parts:
+        1. Key Concept - Explain the fundamental idea in 2-3 clear sentences
+        2. Examples - Give 2 practical, concrete examples with code if applicable
+        3. Practice Question - One specific question to test understanding
+        
+        Required format:
+        [KEY CONCEPT]
+        Your explanation here.
+        [EXAMPLES]
+        Your examples here.
+        [PRACTICE]
+        Your question here.
         """
         try:
             response = self.api_client.generate_content(prompt)
             if response:
-                sections = response.split('\n\n')
-                lesson = {'lesson': '', 'examples': '', 'question': ''}
+                # Split the response into sections
+                parts = response.split('[')
+                lesson = {}
                 
-                for section in sections:
-                    if section.startswith('CONCEPT'):
-                        lesson['lesson'] = section.replace('CONCEPT\n', '')
-                    elif section.startswith('EXAMPLES'):
-                        lesson['examples'] = section.replace('EXAMPLES\n', '')
-                    elif section.startswith('PRACTICE'):
-                        lesson['question'] = section.replace('PRACTICE\n', '')
+                for part in parts:
+                    if 'KEY CONCEPT]' in part:
+                        lesson['lesson'] = part.split(']')[1].strip()
+                    elif 'EXAMPLES]' in part:
+                        lesson['examples'] = part.split(']')[1].strip()
+                    elif 'PRACTICE]' in part:
+                        lesson['question'] = part.split(']')[1].strip()
                 
+                # Verify all parts are present
+                if not all(key in lesson for key in ['lesson', 'examples', 'question']):
+                    raise ValueError("Missing required lesson components")
+                    
                 return lesson
-            return {
-                'lesson': "I couldn't generate the lesson properly.",
-                'examples': "No examples available.",
-                'question': "No question available."
-            }
+            
+            raise ValueError("No response generated")
+            
         except Exception as e:
-            st.error(f"Error teaching topic: {str(e)}")
+            st.error(f"Error in lesson generation: {str(e)}")
+            # Provide default content instead of empty/error message
             return {
-                'lesson': "An error occurred while generating the lesson.",
-                'examples': "No examples available.",
-                'question': "No question available."
+                'lesson': "Python is a high-level programming language known for its simplicity and readability. It uses indentation to define code blocks and supports multiple programming paradigms including procedural, object-oriented, and functional programming.",
+                'examples': """1. Print 'Hello, World!':
+                ```python
+                print('Hello, World!')
+                ```
+                
+                2. Basic variable usage:
+                ```python
+                name = 'Alice'
+                age = 25
+                print(f'{name} is {age} years old')
+                ```""",
+                'question': "Write a line of Python code that creates a variable called 'message' and assigns it the string 'Learning Python'"
             }
 
     def evaluate_answer(self, question, answer):
         prompt = f"""
         Question: {question}
         Student's answer: {answer}
-        Evaluate the answer and provide:
-        1. Whether it's correct or incorrect
-        2. Feedback
-        Separate with '|||'
+        
+        Evaluate this answer and provide:
+        1. Whether it's correct (yes/no)
+        2. Detailed feedback explaining why
+        3. Whether to move to the next topic (yes/no)
+        
+        Format: 
+        [CORRECT]
+        yes or no
+        [FEEDBACK]
+        your feedback here
+        [MOVE]
+        yes or no
         """
         try:
             response = self.api_client.generate_content(prompt)
             if response:
-                parts = response.split('|||')
-                is_correct = 'correct' in parts[0].lower()
-                return {
-                    'evaluation': 'correct' if is_correct else 'incorrect',
-                    'feedback': parts[1].strip() if len(parts) > 1 else "No feedback available.",
-                    'move_on': is_correct
-                }
-            return {
-                'evaluation': 'incorrect',
-                'feedback': "Couldn't evaluate the answer.",
-                'move_on': False
-            }
+                parts = response.split('[')
+                evaluation = {}
+                
+                for part in parts:
+                    if 'CORRECT]' in part:
+                        is_correct = 'yes' in part.split(']')[1].lower()
+                        evaluation['evaluation'] = 'correct' if is_correct else 'incorrect'
+                    elif 'FEEDBACK]' in part:
+                        evaluation['feedback'] = part.split(']')[1].strip()
+                    elif 'MOVE]' in part:
+                        evaluation['move_on'] = 'yes' in part.split(']')[1].lower()
+                
+                return evaluation
+            
+            raise ValueError("No response generated")
+            
         except Exception as e:
-            st.error(f"Error evaluating answer: {str(e)}")
+            st.error(f"Error in evaluation: {str(e)}")
             return {
                 'evaluation': 'incorrect',
-                'feedback': "An error occurred during evaluation.",
+                'feedback': "I couldn't properly evaluate your answer. Please try again.",
                 'move_on': False
             }
 
@@ -202,6 +231,8 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+
 def main():
     st.title("🎓 AI Tutor")
     
@@ -261,19 +292,20 @@ def main():
             st.rerun()
 
     elif st.session_state.teaching_state == 'teach_topic':
-        content = st.session_state.tutor.teach_topic()
+        with st.spinner("Preparing your lesson..."):
+            content = st.session_state.tutor.teach_topic()
+        
         message = f"""## {st.session_state.tutor.current_topic}
 
-### Key Concept
+### 🔑 Key Concept
 {content['lesson']}
 
-### Examples
+### 📝 Examples
 {content['examples']}
 
-### Practice Question
+### ❓ Practice Question
 {content['question']}
-
-Please type your answer below!"""
+"""
         st.session_state.messages.append({"role": "assistant", "content": message})
         st.session_state.last_question = content['question']
         st.session_state.teaching_state = 'wait_for_answer'
