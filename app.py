@@ -203,7 +203,7 @@ class AITutor:
             return f"Error initializing session: {str(e)}"
 
     def create_lesson_flow(topic="data_types"):
-    lesson_structure = {
+        lesson_structure = {
         'data_types': {
             'subtopics': [
                 {
