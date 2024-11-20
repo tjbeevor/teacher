@@ -71,60 +71,116 @@ Let's start with {self.current_topic}!"""
     def teach_topic(self):
         current_topic = self.current_topic
         
-        prompt = f"""
-        Create a comprehensive, university-level lesson about {current_topic}
-        
-        Format your response exactly like this:
-        
-        [KEY CONCEPT]
-        # Title
-        
-        ## Introduction
-        [Thorough introduction explaining the importance and context]
-        
-        ## Core Concepts
-        [Detailed breakdown of main concepts]
-        
-        ## Key Points
-        [Important points to remember]
-        
-        [EXAMPLES]
-        ## Example 1: Basic Implementation
-        [Basic example with explanation]
-        
-        ## Example 2: Intermediate Case
-        [More complex example with explanation]
-        
-        ## Example 3: Advanced Usage
-        [Advanced implementation with explanation]
-        
-        [PRACTICE]
-        [Thought-provoking real-world scenario question]
-        """
-        
+        prompt = f"""Generate a detailed lesson about {current_topic} with the following structure:
+    
+    [CONCEPT]
+    # Introduction
+    [Write 2-3 paragraphs introducing the topic and its importance in programming]
+    
+    # Core Concepts
+    [List and explain the main concepts, with bullet points and clear examples]
+    
+    # Key Points
+    [List 3-5 essential points to remember]
+    
+    [EXAMPLES]
+    # Basic Example
+    ```python
+    [Show basic code example]
+    ```
+    [Explain what the code does]
+    
+    # Intermediate Example
+    ```python
+    [Show intermediate code example]
+    ```
+    [Explain what the code does]
+    
+    # Advanced Example
+    ```python
+    [Show advanced code example]
+    ```
+    [Explain what the code does]
+    
+    [QUESTION]
+    [Ask a thought-provoking question that tests understanding of the concepts covered]"""
+    
         try:
             response = self.api_client.generate_content(prompt)
-            if response:
-                parts = response.split('[')
-                lesson = {}
-                
-                for part in parts:
-                    if 'KEY CONCEPT]' in part:
-                        lesson['lesson'] = part.split(']')[1].strip()
-                    elif 'EXAMPLES]' in part:
-                        lesson['examples'] = part.split(']')[1].strip()
-                    elif 'PRACTICE]' in part:
-                        lesson['question'] = part.split(']')[1].strip()
-                
-                # Verify all parts are present
-                if all(key in lesson for key in ['lesson', 'examples', 'question']):
-                    return lesson
+            if not response:
+                raise ValueError("No response generated")
+    
+            text = response.text
+            sections = text.split('[')
+            lesson = {}
+    
+            # Process each section
+            for section in sections:
+                if section.startswith('CONCEPT]'):
+                    lesson['lesson'] = section.split(']')[1].strip()
+                elif section.startswith('EXAMPLES]'):
+                    lesson['examples'] = section.split(']')[1].strip()
+                elif section.startswith('QUESTION]'):
+                    lesson['question'] = section.split(']')[1].strip()
+    
+            # Verify we have all sections
+            if not all(key in lesson for key in ['lesson', 'examples', 'question']):
+                st.error("Missing sections in the generated content")
+                return {
+                    'lesson': f"""# {current_topic}
+    
+    ## Introduction
+    {current_topic} is a fundamental concept in Python programming. Let's explore its key aspects and how to use it effectively.
+    
+    ## Core Concepts
+    * Basic Principles
+      - How it works
+      - When to use it
+      - Best practices
+    
+    ## Key Points
+    1. Understanding the basics
+    2. Implementing correctly
+    3. Following best practices""",
+                    'examples': """# Basic Example
+    ```python
+    # Simple demonstration
+    print("Hello, World!")
+    ```
+    
+    # Intermediate Example
+    ```python
+    # More complex usage
+    def example():
+        return "This is an example"
+    ```
+    
+    # Advanced Example
+    ```python
+    # Advanced implementation
+    class AdvancedExample:
+        def __init__(self):
+            self.data = []
+    ```""",
+                    'question': f"""Let's apply what we've learned about {current_topic}:
+    
+    1. How would you implement this in a real project?
+    2. What considerations would you keep in mind?
+    3. How would you ensure best practices are followed?
+    
+    Share your thoughts and approach."""
+                }
             
-            raise ValueError("No response generated")
-            
+            return lesson
+    
         except Exception as e:
-            st.error(f"Error in lesson generation: {str(e)}")
-            return None
+            st.error(f"Error generating lesson: {str(e)}")
+            # Return default content in case of error
+            return {
+                'lesson': f"# {current_topic}\n\nLet's learn about this important topic...",
+                'examples': "Here are some examples...",
+                'question': "What are your thoughts on this topic?"
+            }
 
     def _generate_introduction(self, topic):
         """Generate a topic-specific introduction."""
