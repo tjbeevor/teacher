@@ -385,13 +385,11 @@ lesson_message = f"""# {current_topic}
 ### Understanding
 {evaluation['understanding']}
 
-
 ### Feedback
 {evaluation['feedback']}
 
 ### Next Steps
 {evaluation['next_steps']}</div>"""
-
                 st.session_state.messages.append({"role": "assistant", "content": feedback})
                 
                 if evaluation['move_on']:
