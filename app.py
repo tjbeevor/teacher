@@ -1,6 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
-from ai_tutor import AITutor
+from .ai_tutor import AITutor  # Change this line
 
 # Initialize page configuration
 st.set_page_config(
