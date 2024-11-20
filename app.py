@@ -31,7 +31,7 @@ st.markdown("""
     margin-bottom: 0.5rem;
     color: #43A047;
 }
-.main-content p {
+.main-content p, .stMarkdown p {
     font-size: 1rem;
     line-height: 1.5;
     margin-bottom: 1rem;
@@ -49,12 +49,25 @@ st.markdown("""
     margin: 2rem 0;
     border-top: 1px solid #e0e0e0;
 }
+.feedback-box {
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+    background-color: #f8f9fa;
+}
+.feedback-positive {
+    border-left: 4px solid #43A047;
+}
+.feedback-partial {
+    border-left: 4px solid #FB8C00;
+}
+.feedback-negative {
+    border-left: 4px solid #E53935;
+}
 .stButton button {
+    width: 100%;
     background-color: #1E88E5;
     color: white;
-}
-.sidebar-content {
-    padding: 1rem;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -77,17 +90,22 @@ class AITutor:
         self.current_topic = None
         self.topics = []
         self.current_topic_index = 0
+        self.retry_count = 0
+        self.max_retries = 3
 
     def initialize_session(self, subject, level, prerequisites, topic):
         prompt = f"""
-        As a tutor teaching {subject} at {level} level, list exactly 5 key subtopics to cover for {topic}.
-        Consider the student's background: {prerequisites}
-        Format your response exactly like this example:
-        1. First Topic
-        2. Second Topic
-        3. Third Topic
-        4. Fourth Topic
-        5. Fifth Topic
+        As a tutor teaching {subject} at {level} level, create a well-structured learning path.
+        Student background: {prerequisites}
+        Topic: {topic}
+
+        Provide exactly 5 key subtopics that progressively build understanding.
+        Format as:
+        1. [Basic concept/foundation]
+        2. [Core principles]
+        3. [Advanced concepts]
+        4. [Practical applications]
+        5. [Integration and synthesis]
         """
         try:
             response = self.api_client.generate_content(prompt)
@@ -99,9 +117,9 @@ class AITutor:
                     self.topics = topics
                     self.current_topic_index = 0
                     self.current_topic = self.topics[self.current_topic_index]
-                    return f"""Let's begin our study of {topic}! 
-                    
-Here's what we'll cover:
+                    return f"""# Let's study {topic}!
+
+Below is your learning path:
 
 1. {topics[0]}
 2. {topics[1]}
@@ -109,7 +127,7 @@ Here's what we'll cover:
 4. {topics[3]}
 5. {topics[4]}
 
-Let's start with {self.current_topic}!"""
+Let's begin with {self.current_topic}!"""
             return "I'm sorry, but I couldn't generate topics. Please try again."
         except Exception as e:
             st.error(f"Error initializing session: {str(e)}")
@@ -118,62 +136,48 @@ Let's start with {self.current_topic}!"""
     def teach_topic(self):
         current_topic = self.current_topic
         
-        prompt = f"""Create a comprehensive tutorial about {current_topic}. Format as follows:
+        prompt = f"""Create a comprehensive tutorial about {current_topic}.
+        Format as follows:
 
 [LESSON]
 {current_topic}
 
 1. Core Concepts
-   • [Provide a thorough explanation of the fundamental principles]
+   • [Provide thorough explanation of fundamental principles]
    • [Include detailed technical information]
    • [Explain key terminology]
    • [Describe relationships between concepts]
 
 2. Implementation Details
    • [Explain how these concepts are used in practice]
-   • [Discuss common implementation patterns]
+   • [Discuss common patterns and applications]
    • [Include best practices and guidelines]
    • [Address common challenges and solutions]
 
 3. Technical Considerations
-   • [Cover advanced technical details]
-   • [Explain performance implications]
-   • [Discuss limitations and constraints]
+   • [Cover advanced details]
+   • [Explain implications]
+   • [Discuss limitations]
    • [Include optimization strategies]
 
 [EXAMPLES]
-1. Basic Implementation
-```python
-[Provide basic code example]
-# Include detailed comments explaining each line
-```
-- Explanation: [Thorough explanation of what the code does]
-- Key Points: [List important concepts demonstrated]
-- Output: [Show expected output]
+1. Basic Example
+[Provide and explain a basic example]
 
-2. Practical Application
-```python
-[Provide real-world application example]
-# Include comprehensive comments
-```
-- Use Case: [Explain when to use this pattern]
-- Implementation Notes: [Detail important considerations]
-- Common Pitfalls: [Explain what to watch out for]
+2. Advanced Example
+[Provide and explain a more complex example]
 
 [PRACTICE]
-Real-World Scenario:
-[Present a practical problem that tests understanding]
+Question:
+[Ask a specific question that tests understanding of the core concepts]
 
-Considerations:
-1. [List key points to consider]
-2. [Include technical requirements]
-3. [Mention constraints or limitations]
+Consider in your answer:
+1. [Key point to address]
+2. [Key point to address]
+3. [Key point to address]
 
-Approach:
-- [Guide on how to think about the solution]
-- [Mention different possible approaches]
-- [Include evaluation criteria]
-"""
+Explain your reasoning thoroughly."""
+
         try:
             response = self.api_client.generate_content(prompt)
             if not response:
@@ -201,23 +205,38 @@ Approach:
             return None
 
     def evaluate_answer(self, question, answer):
-        prompt = f"""
-        Question: {question}
-        Student's answer: {answer}
-        
-        Evaluate this answer and provide:
-        1. Whether it's correct (yes/no)
-        2. Detailed feedback explaining why
-        3. Whether to move to the next topic (yes/no)
-        
-        Format: 
-        [CORRECT]
-        yes or no
-        [FEEDBACK]
-        your feedback here
-        [MOVE]
-        yes or no
-        """
+        prompt = f"""You are an expert tutor. Evaluate this answer:
+
+Question: {question}
+Student's answer: {answer}
+
+Provide evaluation in this format:
+
+[CORRECT]
+yes/no/partial
+
+[UNDERSTANDING]
+• List concepts understood correctly
+• Identify any misconceptions
+• Note valuable insights
+
+[FEEDBACK]
+• Provide detailed, constructive feedback
+• Explain any corrections needed
+• Give specific examples
+• Add relevant context
+
+[IMPROVEMENT]
+• Suggest specific study areas
+• Recommend practice exercises
+• Provide additional resources
+
+[MOVE]
+yes/no (Should we move to next topic?)
+
+[FOLLOWUP]
+If not moving on, provide a specific follow-up question"""
+
         try:
             response = self.api_client.generate_content(prompt)
             if response:
@@ -226,12 +245,18 @@ Approach:
                 
                 for part in parts:
                     if 'CORRECT]' in part:
-                        is_correct = 'yes' in part.split(']')[1].lower()
-                        evaluation['evaluation'] = 'correct' if is_correct else 'incorrect'
+                        correct_text = part.split(']')[1].lower().strip()
+                        evaluation['evaluation'] = 'correct' if correct_text == 'yes' else 'incorrect' if correct_text == 'no' else 'partial'
+                    elif 'UNDERSTANDING]' in part:
+                        evaluation['understanding'] = part.split(']')[1].strip()
                     elif 'FEEDBACK]' in part:
                         evaluation['feedback'] = part.split(']')[1].strip()
+                    elif 'IMPROVEMENT]' in part:
+                        evaluation['improvement'] = part.split(']')[1].strip()
                     elif 'MOVE]' in part:
                         evaluation['move_on'] = 'yes' in part.split(']')[1].lower()
+                    elif 'FOLLOWUP]' in part:
+                        evaluation['followup'] = part.split(']')[1].strip()
                 
                 return evaluation
             
@@ -252,15 +277,19 @@ Approach:
             return True
         return False
 
-# Initialize session state
-if 'messages' not in st.session_state:
-    st.session_state.messages = []
-if 'teaching_state' not in st.session_state:
-    st.session_state.teaching_state = 'initialize'
-if 'tutor' not in st.session_state:
-    st.session_state.tutor = AITutor()
-if 'last_question' not in st.session_state:
-    st.session_state.last_question = None
+def init_session_state():
+    if 'messages' not in st.session_state:
+        st.session_state.messages = []
+    if 'teaching_state' not in st.session_state:
+        st.session_state.teaching_state = 'initialize'
+    if 'tutor' not in st.session_state:
+        st.session_state.tutor = AITutor()
+    if 'last_question' not in st.session_state:
+        st.session_state.last_question = None
+    if 'retry_count' not in st.session_state:
+        st.session_state.retry_count = 0
+
+init_session_state()
 
 def main():
     # Header with reset button
@@ -286,25 +315,24 @@ def main():
         topic = st.text_input("Topic")
         prerequisites = st.text_area("Your Background (Optional)")
 
-    # Main content area
-    with st.container():
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
+    # Main content
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
-        if st.session_state.teaching_state == 'initialize':
-            if topic and st.button("Start Learning"):
-                response = st.session_state.tutor.initialize_session(
-                    subject, level, prerequisites, topic
-                )
-                st.session_state.messages.append({"role": "assistant", "content": response})
-                st.session_state.teaching_state = 'teach_topic'
-                st.rerun()
+    if st.session_state.teaching_state == 'initialize':
+        if topic and st.button("Start Learning"):
+            response = st.session_state.tutor.initialize_session(
+                subject, level, prerequisites, topic
+            )
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            st.session_state.teaching_state = 'teach_topic'
+            st.rerun()
 
-        elif st.session_state.teaching_state == 'teach_topic':
-            content = st.session_state.tutor.teach_topic()
-            if content:
-                message = f"""# {st.session_state.tutor.current_topic}
+    elif st.session_state.teaching_state == 'teach_topic':
+        content = st.session_state.tutor.teach_topic()
+        if content:
+            message = f"""# {st.session_state.tutor.current_topic}
 
 {content['lesson']}
 
@@ -313,35 +341,60 @@ def main():
 
 ## Practice
 {content['question']}"""
-                st.session_state.messages.append({"role": "assistant", "content": message})
-                st.session_state.last_question = content['question']
-                st.session_state.teaching_state = 'wait_for_answer'
-                st.rerun()
+            st.session_state.messages.append({"role": "assistant", "content": message})
+            st.session_state.last_question = content['question']
+            st.session_state.teaching_state = 'wait_for_answer'
+            st.rerun()
 
-        elif st.session_state.teaching_state == 'wait_for_answer':
-            prompt = st.chat_input("Share your thoughts...")
-            if prompt:
-                st.session_state.messages.append({"role": "user", "content": prompt})
-                evaluation = st.session_state.tutor.evaluate_answer(
-                    st.session_state.last_question, prompt
-                )
-                
-                feedback = "✨ Great thinking! " + evaluation['feedback'] if evaluation['evaluation'] == 'correct' else "💭 Interesting perspective! " + evaluation['feedback']
-                st.session_state.messages.append({"role": "assistant", "content": feedback})
-                
-                if evaluation['move_on']:
-                    if st.session_state.tutor.move_to_next_topic():
-                        st.session_state.teaching_state = 'teach_topic'
-                    else:
-                        st.session_state.teaching_state = 'finished'
-                st.rerun()
+    elif st.session_state.teaching_state == 'wait_for_answer':
+        prompt = st.chat_input("Share your thoughts...")
+        if prompt:
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            evaluation = st.session_state.tutor.evaluate_answer(
+                st.session_state.last_question, prompt
+            )
+            
+            # Create formatted feedback
+            feedback_class = (
+                'feedback-positive' if evaluation['evaluation'] == 'correct'
+                else 'feedback-partial' if evaluation['evaluation'] == 'partial'
+                else 'feedback-negative'
+            )
 
-        elif st.session_state.teaching_state == 'finished':
-            st.success("🎉 Congratulations! You've completed all topics!")
-            if st.button("Start New Topic"):
-                st.session_state.teaching_state = 'initialize'
-                st.session_state.messages = []
-                st.rerun()
+            feedback = f"""<div class='feedback-box {feedback_class}'>
+
+### Understanding Review
+{evaluation.get('understanding', '')}
+
+### Feedback
+{evaluation.get('feedback', '')}
+
+### Areas for Improvement
+{evaluation.get('improvement', '')}"""
+
+            if not evaluation['move_on']:
+                feedback += f"""
+
+### Follow-up Question
+{evaluation.get('followup', '')}"""
+
+            feedback += "</div>"
+            
+            st.session_state.messages.append({"role": "assistant", "content": feedback})
+            
+            if evaluation['move_on']:
+                if st.session_state.tutor.move_to_next_topic():
+                    st.session_state.teaching_state = 'teach_topic'
+                else:
+                    st.session_state.teaching_state = 'finished'
+            st.rerun()
+
+    elif st.session_state.teaching_state == 'finished':
+        st.success("🎉 Congratulations! You've completed all topics!")
+        if st.button("Start New Topic"):
+            st.session_state.teaching_state = 'initialize'
+            st.session_state.messages = []
+            st.rerun()
 
 if __name__ == "__main__":
     try:
