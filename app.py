@@ -340,21 +340,19 @@ Let's start with {topics[0]}!"""
                 current_topic = st.session_state.topics[st.session_state.current_topic_index]
                 lesson = st.session_state.tutor.generate_lesson(current_topic, level)
                 
+                # Debug print
+                st.write("Debug - Raw lesson content:", lesson)
+                
                 lesson_message = f"""# {current_topic}
 
-## Learning Objectives
 {lesson['objectives']}
 
-## Introduction
 {lesson['introduction']}
 
-## Core Concepts
 {lesson['core_concepts']}
 
-## Examples
 {lesson['examples']}
 
-## Practice
 {lesson['practice']}"""
 
                 st.session_state.messages.append({"role": "assistant", "content": lesson_message})
