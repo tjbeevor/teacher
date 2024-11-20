@@ -70,45 +70,45 @@ Let's start with {self.current_topic}!"""
 
 
     def teach_topic(self):
-        prompt = f"""
-        Create a comprehensive, university-level lesson about {self.current_topic}
+    prompt = f"""
+    Create a comprehensive, university-level lesson about {self.current_topic}
+    
+    Follow this detailed template:
+    
+    [KEY CONCEPT]
+    1. Start with a clear, engaging introduction that explains the concept's importance in programming
+    2. Provide detailed explanations of all key components and their relationships
+    3. Include real-world applications and use cases
+    4. Explain advantages, limitations, and best practices
+    5. Compare with related concepts and alternatives
+    6. Include important implementation considerations
+    Break this into clearly formatted sections with bullet points and subsections.
+    
+    [EXAMPLES]
+    Provide 4-5 detailed, real-world examples that:
+    1. Start with simple cases and progress to complex scenarios
+    2. Show practical implementations
+    3. Include code samples with detailed explanations
+    4. Demonstrate common patterns and best practices
+    5. Include expected output and behavior
+    6. Point out potential pitfalls and how to avoid them
+    
+    [PRACTICE]
+    Create an engaging discussion question that:
+    1. Tests deep understanding of the concepts
+    2. Requires analytical thinking
+    3. Relates to real-world scenarios
+    4. Has multiple valid approaches to discuss
+    5. Encourages creative problem-solving
+    """
+    try:
+        response = self.api_client.generate_content(prompt)
+        if not response:
+            raise ValueError("No response generated")
         
-        Follow this detailed template:
-        
-        [KEY CONCEPT]
-        1. Start with a clear, engaging introduction that explains the concept's importance in programming
-        2. Provide detailed explanations of all key components and their relationships
-        3. Include real-world applications and use cases
-        4. Explain advantages, limitations, and best practices
-        5. Compare with related concepts and alternatives
-        6. Include important implementation considerations
-        Break this into clearly formatted sections with bullet points and subsections.
-        
-        [EXAMPLES]
-        Provide 4-5 detailed, real-world examples that:
-        1. Start with simple cases and progress to complex scenarios
-        2. Show practical implementations
-        3. Include code samples with detailed explanations
-        4. Demonstrate common patterns and best practices
-        5. Include expected output and behavior
-        6. Point out potential pitfalls and how to avoid them
-        
-        [PRACTICE]
-        Create an engaging discussion question that:
-        1. Tests deep understanding of the concepts
-        2. Requires analytical thinking
-        3. Relates to real-world scenarios
-        4. Has multiple valid approaches to discuss
-        5. Encourages creative problem-solving
-        """
-        try:
-            response = self.api_client.generate_content(prompt)
-            if not response:
-                raise ValueError("No response generated")
-            
-            # Provide rich default content for Advanced Data Structures
-            return {
-                'lesson': """# Understanding Advanced Data Structures in Python
+        # Provide rich default content for Advanced Data Structures
+        return {
+            'lesson': """# Understanding Advanced Data Structures in Python
 
 ## Introduction
 Advanced data structures are fundamental building blocks that enable efficient data organization and manipulation in complex programs. They provide specialized ways to store and access data, each optimized for specific use cases.
@@ -319,7 +319,7 @@ Questions to consider:
 
 Share your thoughts on how you would approach this challenge, considering factors like efficiency, fairness, and practical implementation."""
         }
-            
+        
     except Exception as e:
         st.error(f"Error in lesson generation: {str(e)}")
         return None
