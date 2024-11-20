@@ -404,21 +404,21 @@ def main():
                 if content:
                     message = f"""# {st.session_state.tutor.current_topic}
                 
-                {content['lesson']}
+        {content['lesson']}
                 
-                ## Examples
-                {content['examples']}
+        ## Examples
+        {content['examples']}
                 
-                ## Practice
-                {content['question']}"""
-                                    st.session_state.messages.append({"role": "assistant", "content": message})
-                                    st.session_state.last_question = content['question']
-                                    st.session_state.teaching_state = 'wait_for_answer'
-                                    safe_rerun()
-                                else:
-                                    st.error("Failed to generate lesson content. Please try again.")
-                                    st.session_state.teaching_state = 'initialize'
-                                    safe_rerun()
+        ## Practice
+        {content['question']}"""
+                st.session_state.messages.append({"role": "assistant", "content": message})
+                st.session_state.last_question = content['question']
+                st.session_state.teaching_state = 'wait_for_answer'
+                safe_rerun()
+            else:
+                st.error("Failed to generate lesson content. Please try again.")
+                st.session_state.teaching_state = 'initialize'
+                safe_rerun()
 
         elif st.session_state.teaching_state == 'wait_for_answer':
             prompt = st.chat_input("Share your thoughts...")
