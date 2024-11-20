@@ -178,12 +178,23 @@ class AITutor:
         if 'GOOGLE_API_KEY' not in st.secrets:
             st.error("🔑 GOOGLE_API_KEY not found in secrets!")
             st.stop()
-        
         self.api_client = APIClient(st.secrets['GOOGLE_API_KEY'])
         self.quiz_generator = QuizGenerator(self.api_client)
         self.progress_tracker = ProgressTracker()
         self.current_subject = None
         self.current_topic = None
+
+    def send_message(self, message: str) -> str:
+        prompt = f"""As a Python tutor, respond to this student message: {message}
+        Current subject: {self.current_subject}
+        Current topic: {self.current_topic}
+        Provide a helpful, encouraging response that advances their understanding."""
+        
+        try:
+            response = self.api_client.generate_content(prompt)
+            return response
+        except Exception as e:
+            return f"I apologize, but I encountered an error: {str(e)}. Let me try explaining this another way."
 
     def initialize_session(self, subject: str, level: str, prerequisites: str, topic: str) -> str:
         prompt = f"""You are a helpful and encouraging tutor teaching {subject} at {level} level.
