@@ -345,15 +345,17 @@ Let's start with {topics[0]}!"""
                 
                 lesson_message = f"""# {current_topic}
 
-{lesson['objectives']}
+lesson_message = f"""# {current_topic}
 
-{lesson['introduction']}
+{lesson.get('objectives', '')}
 
-{lesson['core_concepts']}
+{lesson.get('introduction', '')}
 
-{lesson['examples']}
+{lesson.get('core_concepts', '')}
 
-{lesson['practice']}"""
+{lesson.get('examples', '')}
+
+{lesson.get('practice', '')}"""
 
                 st.session_state.messages.append({"role": "assistant", "content": lesson_message})
                 st.session_state.last_question = lesson['practice']
