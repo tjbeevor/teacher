@@ -334,6 +334,23 @@ def main():
                     st.session_state.teaching_state = 'wait_for_answer'
                 st.experimental_rerun()
 
+        elif st.session_state.teaching_state == 'wait_for_answer':
+            if prompt := st.chat_input("💭 Type your answer here..."):
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                with st.spinner("🤔 Evaluating your answer..."):
+                    evaluation = st.session_state.tutor.evaluate_answer(topic_content['question'], prompt)
+                feedback = f"{evaluation['feedback']}"
+                st.session_state.messages.append({"role": "assistant", "content": feedback})
+                
+                if evaluation['move_on']:
+                    if st.session_state.tutor.move_to_next_topic():
+                        st.session_state.teaching_state = 'teach_topic'
+                    else:
+                        st.session_state.teaching_state = 'finished'
+                else:
+                    st.session_state.teaching_state = 'wait_for_answer'
+                st.experimental_rerun()
+
         elif st.session_state.teaching_state == 'finished':
             st.success("🎉 Congratulations! You've completed all topics in this lesson.")
             if st.button("📝 Take Quiz"):
