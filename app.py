@@ -274,15 +274,15 @@ class AITutor:
 
 
     def get_topic_content(self, topic: str) -> str:
-    topic_content = {
-        "variables_basics": "Introduction to variables and basic assignments",
-        "data_types": "Different data types in Python (int, float, str, etc.)",
-        "variable_naming": "Rules and conventions for naming variables",
-        "type_conversion": "Converting between different data types",
-        "variable_scope": "Understanding variable scope and lifetime",
-        # Add more topics and their content
-    }
-    return topic_content.get(topic, "Topic content not found")
+        topic_content = {
+            "variables_basics": "Introduction to variables and basic assignments",
+            "data_types": "Different data types in Python (int, float, str, etc.)",
+            "variable_naming": "Rules and conventions for naming variables",
+            "type_conversion": "Converting between different data types",
+            "variable_scope": "Understanding variable scope and lifetime",
+            # Add more topics and their content
+        }
+        return topic_content.get(topic, "Topic content not found")
 
 
    
