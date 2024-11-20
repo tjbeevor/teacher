@@ -218,64 +218,79 @@ class AITutor:
                         {'name': 'variable_types', 'covered': False}
                     ],
                     'phase': 'teaching',
-                    'last_concept': None,
-                    'last_question': None,
-                    'expected_answer': None
+                    'context': 'variables',  # Add context tracking
+                    'last_question_topic': None
                 }
 
             state = st.session_state.learning_state
-            current_subtopic = state['subtopics'][state['subtopic_index']]
 
-            if state['phase'] == 'teaching':
-                follow_up_prompt = f"""
-                Provide a comprehensive introduction to {current_subtopic['name']} that includes:
-                1. A warm welcome
-                2. Clear explanation with analogies
-                3. Code examples
-                4. A specific question to test understanding
-                
-                Format your response as:
-                DISPLAY:
-                [Your teaching content and question]
-
-                ANSWER_KEY:
-                [The expected answer or concept you're looking for]
-                
-                Never include the answer in the display text.
-                """
-                state['phase'] = 'question'
-
-            elif state['phase'] == 'question':
+            if state['phase'] == 'question':
                 follow_up_prompt = f"""
                 The student responded: "{message}"
-                Expected concept understanding: {state['expected_answer']}
+                Current topic: Variables
+                Context: {state['context']}
+                Last question was about: {state['last_question_topic']}
 
-                Provide:
-                1. Response to their answer
-                2. Additional explanation if needed
-                3. A follow-up question
+                If their answer shows understanding:
+                1. Acknowledge what they got right about variables
+                2. Expand on their understanding of variables
+                3. Provide a more complex example of variable usage
+                4. Ask a deeper question about variables
+                
+                If their answer needs clarification:
+                1. Acknowledge their effort
+                2. Clarify the concept of variables
+                3. Provide a simpler example
+                4. Ask an easier question about variables
+
+                IMPORTANT:
+                - Stay focused on variables and variable-related concepts
+                - Do not switch to other topics like databases
+                - Build on their current understanding
+                - Make responses detailed but focused
 
                 Format as:
                 DISPLAY:
-                [Your response and next question]
+                [Your response and next question about variables]
 
                 ANSWER_KEY:
-                [The expected answer for your new question]
-
-                Never include the answer in the display text.
+                [Expected answer]
                 """
                 state['phase'] = 'verification'
 
-            response = self.api_client.generate_content(follow_up_prompt)
-            if not response:
-                return "Let me try explaining this in a different way..."
+            elif state['phase'] == 'verification':
+                follow_up_prompt = f"""
+                Based on the student's response about variables: "{message}"
+                
+                Provide:
+                1. Specific acknowledgment of their understanding of variables
+                2. A more detailed explanation about variable usage
+                3. A practical example of variable implementation
+                4. A follow-up question specifically about variables
+                
+                STRICT REQUIREMENTS:
+                - Keep all discussion focused on variables
+                - Don't introduce unrelated topics
+                - Use relevant programming examples
+                - Build complexity gradually
+                
+                Format as:
+                DISPLAY:
+                [Your response and next question about variables]
 
-            # Parse response to separate display text and answer key
+                ANSWER_KEY:
+                [Expected answer]
+                """
+                state['phase'] = 'question'
+
+            response = self.api_client.generate_content(follow_up_prompt)
+            
+            # Parse response and update state
             if 'DISPLAY:' in response:
                 parts = response.split('DISPLAY:')[1].split('ANSWER_KEY:')
                 display_text = parts[0].strip()
                 if len(parts) > 1:
-                    state['expected_answer'] = parts[1].strip()
+                    state['last_question_topic'] = 'variables'
                 return display_text
             
             return response
