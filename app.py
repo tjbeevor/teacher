@@ -12,6 +12,53 @@ st.set_page_config(
 # Configure Gemini
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
+# Add custom CSS
+st.markdown("""
+<style>
+.main-content h1 {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+}
+.main-content h2 {
+    font-size: 1.4rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+    color: #1E88E5;
+}
+.main-content h3 {
+    font-size: 1.2rem;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: #43A047;
+}
+.main-content p {
+    font-size: 1rem;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+}
+.main-content pre {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+}
+.main-content code {
+    font-size: 0.9rem;
+}
+.section-divider {
+    margin: 2rem 0;
+    border-top: 1px solid #e0e0e0;
+}
+.stButton button {
+    background-color: #1E88E5;
+    color: white;
+}
+.sidebar-content {
+    padding: 1rem;
+}
+</style>
+""", unsafe_allow_html=True)
+
 class APIClient:
     def __init__(self):
         self.model = genai.GenerativeModel('gemini-pro')
@@ -45,7 +92,6 @@ class AITutor:
         try:
             response = self.api_client.generate_content(prompt)
             if response:
-                # Extract topics and clean them
                 topics = [line.split('. ')[1].strip() 
                          for line in response.split('\n') 
                          if line.strip() and line[0].isdigit()]
@@ -72,70 +118,83 @@ Let's start with {self.current_topic}!"""
     def teach_topic(self):
         current_topic = self.current_topic
         
-        prompt = f"""You are an expert Python programming tutor. Create a detailed lesson about {current_topic}.
-        Structure your response exactly as shown below:
+        prompt = f"""Create a comprehensive tutorial about {current_topic}. Format as follows:
 
 [LESSON]
-# {current_topic}
+{current_topic}
 
-## Overview
-[Write a thorough introduction explaining the concept]
+1. Core Concepts
+   • [Provide a thorough explanation of the fundamental principles]
+   • [Include detailed technical information]
+   • [Explain key terminology]
+   • [Describe relationships between concepts]
 
-## Key Components
-[List and explain all major components and concepts]
+2. Implementation Details
+   • [Explain how these concepts are used in practice]
+   • [Discuss common implementation patterns]
+   • [Include best practices and guidelines]
+   • [Address common challenges and solutions]
 
-## Detailed Explanation
-[Provide in-depth technical details and explanations]
-
-## Common Pitfalls and Best Practices
-[List important considerations and recommendations]
+3. Technical Considerations
+   • [Cover advanced technical details]
+   • [Explain performance implications]
+   • [Discuss limitations and constraints]
+   • [Include optimization strategies]
 
 [EXAMPLES]
-# Basic Usage
+1. Basic Implementation
 ```python
-[Include basic example code]
+[Provide basic code example]
+# Include detailed comments explaining each line
 ```
-[Explain the basic example]
+- Explanation: [Thorough explanation of what the code does]
+- Key Points: [List important concepts demonstrated]
+- Output: [Show expected output]
 
-# Intermediate Usage
+2. Practical Application
 ```python
-[Include intermediate example code]
+[Provide real-world application example]
+# Include comprehensive comments
 ```
-[Explain the intermediate example]
-
-# Advanced Usage
-```python
-[Include advanced example code]
-```
-[Explain the advanced example]
+- Use Case: [Explain when to use this pattern]
+- Implementation Notes: [Detail important considerations]
+- Common Pitfalls: [Explain what to watch out for]
 
 [PRACTICE]
-[Create a practical, real-world scenario question]
-[Include specific points to consider]
+Real-World Scenario:
+[Present a practical problem that tests understanding]
+
+Considerations:
+1. [List key points to consider]
+2. [Include technical requirements]
+3. [Mention constraints or limitations]
+
+Approach:
+- [Guide on how to think about the solution]
+- [Mention different possible approaches]
+- [Include evaluation criteria]
 """
-        
         try:
             response = self.api_client.generate_content(prompt)
             if not response:
                 return None
 
             content = response
-            lesson_section = ""
-            examples_section = ""
-            practice_section = ""
+            sections = content.split('[')
+            lesson = {}
 
-            if "[LESSON]" in content and "[EXAMPLES]" in content and "[PRACTICE]" in content:
-                parts = content.split("[LESSON]")[1].split("[EXAMPLES]")
-                lesson_section = parts[0].strip()
-                remaining = parts[1].split("[PRACTICE]")
-                examples_section = remaining[0].strip()
-                practice_section = remaining[1].strip()
+            for section in sections:
+                if 'LESSON]' in section:
+                    lesson['lesson'] = section.split(']')[1].strip()
+                elif 'EXAMPLES]' in section:
+                    lesson['examples'] = section.split(']')[1].strip()
+                elif 'PRACTICE]' in section:
+                    lesson['question'] = section.split(']')[1].strip()
 
-            return {
-                'lesson': lesson_section if lesson_section else "Content generation failed.",
-                'examples': examples_section if examples_section else "Examples not available.",
-                'question': practice_section if practice_section else "Practice question not available."
-            }
+            if all(key in lesson for key in ['lesson', 'examples', 'question']):
+                return lesson
+
+            raise ValueError("Missing sections in generated content")
 
         except Exception as e:
             st.error(f"Error in lesson generation: {str(e)}")
@@ -194,21 +253,26 @@ Let's start with {self.current_topic}!"""
         return False
 
 # Initialize session state
-def init_session_state():
-    if 'messages' not in st.session_state:
-        st.session_state.messages = []
-    if 'teaching_state' not in st.session_state:
-        st.session_state.teaching_state = 'initialize'
-    if 'tutor' not in st.session_state:
-        st.session_state.tutor = AITutor()
-    if 'last_question' not in st.session_state:
-        st.session_state.last_question = None
-
-init_session_state()
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
+if 'teaching_state' not in st.session_state:
+    st.session_state.teaching_state = 'initialize'
+if 'tutor' not in st.session_state:
+    st.session_state.tutor = AITutor()
+if 'last_question' not in st.session_state:
+    st.session_state.last_question = None
 
 def main():
-    st.title("🎓 AI Tutor")
+    # Header with reset button
+    col1, col2, col3 = st.columns([1, 6, 1])
+    with col1:
+        if st.button("🔄 Reset"):
+            st.session_state.clear()
+            st.rerun()
+    with col2:
+        st.title("🎓 AI Tutor")
     
+    # Sidebar
     with st.sidebar:
         st.header("Learning Settings")
         subject = st.selectbox(
@@ -222,61 +286,62 @@ def main():
         topic = st.text_input("Topic")
         prerequisites = st.text_area("Your Background (Optional)")
 
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    # Main content area
+    with st.container():
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
 
-    if st.session_state.teaching_state == 'initialize':
-        if topic and st.button("Start Learning"):
-            response = st.session_state.tutor.initialize_session(
-                subject, level, prerequisites, topic
-            )
-            st.session_state.messages.append({"role": "assistant", "content": response})
-            st.session_state.teaching_state = 'teach_topic'
-            st.rerun()
+        if st.session_state.teaching_state == 'initialize':
+            if topic and st.button("Start Learning"):
+                response = st.session_state.tutor.initialize_session(
+                    subject, level, prerequisites, topic
+                )
+                st.session_state.messages.append({"role": "assistant", "content": response})
+                st.session_state.teaching_state = 'teach_topic'
+                st.rerun()
 
-    elif st.session_state.teaching_state == 'teach_topic':
-        content = st.session_state.tutor.teach_topic()
-        if content:
-            message = f"""# {st.session_state.tutor.current_topic}
+        elif st.session_state.teaching_state == 'teach_topic':
+            content = st.session_state.tutor.teach_topic()
+            if content:
+                message = f"""# {st.session_state.tutor.current_topic}
 
-## 🔑 Key Concepts
 {content['lesson']}
 
-## 📝 Examples
+## Examples
 {content['examples']}
 
-## ❓ Practice Question
+## Practice
 {content['question']}"""
-            st.session_state.messages.append({"role": "assistant", "content": message})
-            st.session_state.last_question = content['question']
-            st.session_state.teaching_state = 'wait_for_answer'
-            st.rerun()
+                st.session_state.messages.append({"role": "assistant", "content": message})
+                st.session_state.last_question = content['question']
+                st.session_state.teaching_state = 'wait_for_answer'
+                st.rerun()
 
-    elif st.session_state.teaching_state == 'wait_for_answer':
-        prompt = st.chat_input("Share your thoughts...")
-        if prompt:
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            evaluation = st.session_state.tutor.evaluate_answer(
-                st.session_state.last_question, prompt
-            )
-            
-            feedback = "✨ Great thinking! " + evaluation['feedback'] if evaluation['evaluation'] == 'correct' else "💭 Interesting perspective! " + evaluation['feedback']
-            st.session_state.messages.append({"role": "assistant", "content": feedback})
-            
-            if evaluation['move_on']:
-                if st.session_state.tutor.move_to_next_topic():
-                    st.session_state.teaching_state = 'teach_topic'
-                else:
-                    st.session_state.teaching_state = 'finished'
-            st.rerun()
+        elif st.session_state.teaching_state == 'wait_for_answer':
+            prompt = st.chat_input("Share your thoughts...")
+            if prompt:
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                evaluation = st.session_state.tutor.evaluate_answer(
+                    st.session_state.last_question, prompt
+                )
+                
+                feedback = "✨ Great thinking! " + evaluation['feedback'] if evaluation['evaluation'] == 'correct' else "💭 Interesting perspective! " + evaluation['feedback']
+                st.session_state.messages.append({"role": "assistant", "content": feedback})
+                
+                if evaluation['move_on']:
+                    if st.session_state.tutor.move_to_next_topic():
+                        st.session_state.teaching_state = 'teach_topic'
+                    else:
+                        st.session_state.teaching_state = 'finished'
+                st.rerun()
 
-    elif st.session_state.teaching_state == 'finished':
-        st.success("🎉 Congratulations! You've completed all topics!")
-        if st.button("Start New Topic"):
-            st.session_state.teaching_state = 'initialize'
-            st.session_state.messages = []
-            st.rerun()
+        elif st.session_state.teaching_state == 'finished':
+            st.success("🎉 Congratulations! You've completed all topics!")
+            if st.button("Start New Topic"):
+                st.session_state.teaching_state = 'initialize'
+                st.session_state.messages = []
+                st.rerun()
 
 if __name__ == "__main__":
     try:
