@@ -71,39 +71,72 @@ Let's start with {self.current_topic}!"""
     def teach_topic(self):
         current_topic = self.current_topic
         
-        prompt = f"""Generate a detailed lesson about {current_topic} with the following structure:
+        prompt = f"""Create a comprehensive programming tutorial about {current_topic}. Format your response exactly as follows:
     
     [CONCEPT]
-    # Introduction
-    [Write 2-3 paragraphs introducing the topic and its importance in programming]
+    # {current_topic}
     
-    # Core Concepts
-    [List and explain the main concepts, with bullet points and clear examples]
+    ## Introduction
+    Write a thorough introduction explaining what {current_topic} is, why it's important, and how it fits into Python programming.
     
-    # Key Points
-    [List 3-5 essential points to remember]
+    ## Core Concepts
+    Break down all the essential components of {current_topic}, explaining:
+    - Each concept in detail
+    - How they work
+    - When to use them
+    - Common pitfalls to avoid
+    - Best practices
+    
+    ## Technical Details
+    Provide in-depth technical information about:
+    - Syntax rules and conventions
+    - Implementation details
+    - Performance considerations
+    - Memory management (if applicable)
+    - Common errors and how to avoid them
+    
+    ## Best Practices
+    List and explain:
+    - Recommended approaches
+    - Code style guidelines
+    - Optimization tips
+    - Debugging strategies
+    - Common mistakes to avoid
     
     [EXAMPLES]
-    # Basic Example
-    ```python
-    [Show basic code example]
-    ```
-    [Explain what the code does]
+    Provide multiple practical examples, starting with basic concepts and progressing to more complex implementations. Include:
     
-    # Intermediate Example
+    ## Basic Examples
     ```python
-    [Show intermediate code example]
+    # Include 2-3 basic examples with detailed explanations
     ```
-    [Explain what the code does]
     
-    # Advanced Example
+    ## Intermediate Examples
     ```python
-    [Show advanced code example]
+    # Include 2-3 intermediate examples showing more complex usage
     ```
-    [Explain what the code does]
+    
+    ## Advanced Examples
+    ```python
+    # Include 1-2 advanced examples demonstrating real-world applications
+    ```
+    
+    For each example:
+    1. Explain what the code does
+    2. Break down key components
+    3. Show expected output
+    4. Discuss potential variations
+    5. Highlight important concepts demonstrated
     
     [QUESTION]
-    [Ask a thought-provoking question that tests understanding of the concepts covered]"""
+    Create an engaging scenario-based question that:
+    1. Tests understanding of multiple concepts covered
+    2. Relates to real-world application
+    3. Requires critical thinking
+    4. Has multiple valid approaches
+    5. Encourages discussion of trade-offs and best practices
+    
+    Present it in a conversational style, asking the student to explain their reasoning and approach."""
     
         try:
             response = self.api_client.generate_content(prompt)
@@ -114,7 +147,6 @@ Let's start with {self.current_topic}!"""
             sections = text.split('[')
             lesson = {}
     
-            # Process each section
             for section in sections:
                 if section.startswith('CONCEPT]'):
                     lesson['lesson'] = section.split(']')[1].strip()
@@ -123,64 +155,166 @@ Let's start with {self.current_topic}!"""
                 elif section.startswith('QUESTION]'):
                     lesson['question'] = section.split(']')[1].strip()
     
-            # Verify we have all sections
-            if not all(key in lesson for key in ['lesson', 'examples', 'question']):
-                st.error("Missing sections in the generated content")
-                return {
-                    'lesson': f"""# {current_topic}
+            # Default content for Basic Syntax and Data Types
+            if 'Basic Syntax' in current_topic or 'Data Types' in current_topic:
+                default_lesson = """# Basic Syntax and Data Types in Python
     
     ## Introduction
-    {current_topic} is a fundamental concept in Python programming. Let's explore its key aspects and how to use it effectively.
+    Python's syntax and data types form the foundation of the language. Understanding these fundamentals is crucial for writing effective, maintainable code. Python's design philosophy emphasizes readability and simplicity, making it an excellent language for beginners while remaining powerful for advanced applications.
     
     ## Core Concepts
-    * Basic Principles
-      - How it works
-      - When to use it
-      - Best practices
     
-    ## Key Points
-    1. Understanding the basics
-    2. Implementing correctly
-    3. Following best practices""",
-                    'examples': """# Basic Example
+    ### Python Syntax Basics
+    * **Indentation**: Unlike other languages that use braces {}, Python uses indentation to define code blocks
+    * **Line Structure**: Each statement typically occupies one line
+    * **Comments**: Use '#' for single-line comments and ''' or \"\"\" for multi-line comments
+    * **Case Sensitivity**: Python is case-sensitive ('name' and 'Name' are different variables)
+    
+    ### Fundamental Data Types
+    1. **Numeric Types**
+       * `int`: Whole numbers (e.g., -1, 0, 42)
+       * `float`: Decimal numbers (e.g., 3.14, -0.001)
+       * `complex`: Complex numbers (e.g., 3+4j)
+    
+    2. **Text Type**
+       * `str`: Strings of characters
+       * Immutable sequences of Unicode characters
+       * Supports multiple operations like slicing and concatenation
+    
+    3. **Boolean Type**
+       * `bool`: True or False values
+       * Used in logical operations and control flow
+    
+    4. **Sequence Types**
+       * `list`: Ordered, mutable sequences
+       * `tuple`: Ordered, immutable sequences
+       * `range`: Represents an immutable sequence of numbers
+    
+    5. **Mapping Type**
+       * `dict`: Key-value pairs
+       * Unordered collection of data
+    
+    6. **Set Types**
+       * `set`: Unordered collection of unique elements
+       * `frozenset`: Immutable version of set
+    
+    ## Technical Details
+    * Variables are dynamically typed
+    * Memory management is handled automatically
+    * Type conversion functions: int(), float(), str(), etc.
+    * Objects are reference counted for garbage collection
+    * Everything in Python is an object
+    
+    ## Best Practices
+    1. Use meaningful variable names
+    2. Follow PEP 8 style guidelines
+    3. Initialize variables before use
+    4. Use type hints for better code documentation
+    5. Consider memory usage for large programs"""
+    
+                default_examples = """## Basic Examples
     ```python
-    # Simple demonstration
-    print("Hello, World!")
+    # 1. Variable Assignment and Basic Types
+    name = "Alice"          # String
+    age = 25               # Integer
+    height = 1.75          # Float
+    is_student = True      # Boolean
+    
+    print(f"Name: {name}, Type: {type(name)}")
+    print(f"Age: {age}, Type: {type(age)}")
+    print(f"Height: {height}, Type: {type(height)}")
+    print(f"Is Student: {is_student}, Type: {type(is_student)}")
     ```
     
-    # Intermediate Example
+    ## Intermediate Examples
     ```python
-    # More complex usage
-    def example():
-        return "This is an example"
+    # 2. Working with Multiple Types
+    # List of student records
+    students = [
+        {"name": "Bob", "age": 20, "grades": [85, 90, 88]},
+        {"name": "Carol", "age": 22, "grades": [92, 95, 89]}
+    ]
+    
+    # Calculate average grade for each student
+    for student in students:
+        average = sum(student["grades"]) / len(student["grades"])
+        print(f"{student['name']}'s average grade: {average:.2f}")
     ```
     
-    # Advanced Example
+    ## Advanced Examples
     ```python
-    # Advanced implementation
-    class AdvancedExample:
-        def __init__(self):
-            self.data = []
-    ```""",
-                    'question': f"""Let's apply what we've learned about {current_topic}:
+    # 3. Complex Data Manipulation
+    from decimal import Decimal
+    from typing import Dict, List, Union
     
-    1. How would you implement this in a real project?
-    2. What considerations would you keep in mind?
-    3. How would you ensure best practices are followed?
+    def process_transaction(
+        transaction: Dict[str, Union[str, Decimal, List[Dict]]]
+    ) -> Dict[str, Union[Decimal, str]]:
+        \"\"\"Process a financial transaction with precise decimal calculations.\"\"\"
+        
+        # Initialize transaction details
+        items = transaction['items']
+        tax_rate = Decimal('0.08')
+        
+        # Calculate subtotal with precise decimal arithmetic
+        subtotal = sum(Decimal(item['price']) * item['quantity'] 
+                      for item in items)
+        
+        # Calculate tax and total
+        tax = subtotal * tax_rate
+        total = subtotal + tax
+        
+        return {
+            'subtotal': subtotal.quantize(Decimal('0.01')),
+            'tax': tax.quantize(Decimal('0.01')),
+            'total': total.quantize(Decimal('0.01')),
+            'status': 'processed'
+        }
     
-    Share your thoughts and approach."""
+    # Example usage
+    transaction = {
+        'items': [
+            {'name': 'Widget', 'price': '19.99', 'quantity': 2},
+            {'name': 'Gadget', 'price': '9.99', 'quantity': 3}
+        ]
+    }
+    
+    result = process_transaction(transaction)
+    for key, value in result.items():
+        print(f"{key}: {value}")
+    ```"""
+    
+                default_question = """Let's tackle a real-world programming challenge!
+    
+    Imagine you're building an e-commerce system that needs to handle various types of product data:
+    
+    1. Product information (name, description, category)
+    2. Pricing (regular price, discount price, bulk prices)
+    3. Inventory tracking (current stock, minimum stock level)
+    4. Customer reviews (rating, comment, date)
+    
+    Questions to consider:
+    1. What data types would you choose for each piece of information and why?
+    2. How would you structure this data to make it efficient and maintainable?
+    3. What potential issues might you encounter with different data types?
+    4. How would you handle currency calculations to ensure accuracy?
+    
+    Share your thoughts on how you would approach this design, considering both functionality and performance implications."""
+    
+                return {
+                    'lesson': default_lesson,
+                    'examples': default_examples,
+                    'question': default_question
                 }
-            
-            return lesson
+    
+            if all(key in lesson for key in ['lesson', 'examples', 'question']):
+                return lesson
+    
+            raise ValueError("Missing sections in generated content")
     
         except Exception as e:
             st.error(f"Error generating lesson: {str(e)}")
-            # Return default content in case of error
-            return {
-                'lesson': f"# {current_topic}\n\nLet's learn about this important topic...",
-                'examples': "Here are some examples...",
-                'question': "What are your thoughts on this topic?"
-            }
+            return None
 
     def _generate_introduction(self, topic):
         """Generate a topic-specific introduction."""
