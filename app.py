@@ -197,99 +197,128 @@ class AITutor:
             return "Please start a new session first."
         
         try:
-            if 'learning_progression' not in st.session_state:
-                st.session_state.learning_progression = {
+            # Initialize learning state if not exists
+            if 'learning_state' not in st.session_state:
+                st.session_state.learning_state = {
                     'current_topic': 'variables',
-                    'subtopics': [
-                        {'name': 'basic_assignment', 'completed': False},
-                        {'name': 'data_types', 'completed': False},
-                        {'name': 'variable_naming', 'completed': False},
-                        {'name': 'operations', 'completed': False}
-                    ],
-                    'current_question': None,
-                    'expected_answer': None,
-                    'question_context': None
+                    'phase': 'teaching',  # phases: teaching, question, verification, elaboration, transition
+                    'concept_understood': False,
+                    'difficulty_level': 1,
+                    'topics_covered': [],
+                    'current_concept_points': []
                 }
 
-            prog = st.session_state.learning_progression
+            state = st.session_state.learning_state
             
-            # If we were expecting an answer, process it
-            if prog['expected_answer']:
-                is_correct = self._check_answer(message, prog['expected_answer'])
-                next_subtopic = self._get_next_uncompleted_subtopic()
+            if state['phase'] == 'teaching':
+                # Initial teaching phase or continuing explanation
+                follow_up_prompt = f"""
+                You are teaching {state['current_topic']} in Python. Provide:
+                1. A thorough explanation of the concept
+                2. Multiple real-world analogies
+                3. Clear code examples
+                4. Build from simple to complex
                 
-                if is_correct:
-                    follow_up_prompt = f"""
-                    The student correctly answered about {prog['question_context']}.
-                    
-                    Respond with:
-                    1. A brief acknowledgment of their correct understanding
-                    2. A natural transition to the next concept: {next_subtopic}
-                    3. A clear explanation of the new concept with a practical example
-                    4. A new question about {next_subtopic}
-                    
-                    Keep the response conversational and never include alternate answers 
-                    or "if incorrect" scenarios.
-                    """
+                After the explanation, ask ONE specific question to check understanding.
+                
+                Make your response:
+                - Rich in detail and examples
+                - Well-structured but conversational
+                - Focused on fundamental understanding
+                - Include practical code examples
+                
+                End with a single, clear question about a basic aspect of what you just taught.
+                """
+                state['phase'] = 'question'
+
+            elif state['phase'] == 'question':
+                # Processing student's answer to our question
+                follow_up_prompt = f"""
+                The student responded: "{message}"
+                
+                If the answer shows understanding:
+                - Confirm their understanding
+                - Add deeper context to enhance their knowledge
+                - Provide a more complex example
+                - Ask a slightly more challenging question about the same concept
+                
+                If the answer shows confusion:
+                - Acknowledge their attempt
+                - Explain the concept differently
+                - Use a new analogy
+                - Provide a simpler example
+                - Ask an easier question about the same concept
+                
+                Keep building on the same concept until mastery is shown.
+                """
+                state['phase'] = 'verification'
+
+            elif state['phase'] == 'verification':
+                # Check if ready to move on or need more practice
+                if any(indicator in message.lower() for indicator in ['understand', 'got it', 'makes sense']):
+                    state['concept_understood'] = True
+                    state['phase'] = 'transition'
                 else:
                     follow_up_prompt = f"""
-                    The student's answer about {prog['question_context']} needs clarification.
+                    The student is still working on {state['current_topic']}.
+                    
+                    Based on their response: "{message}"
                     
                     Provide:
-                    1. Encouragement for their attempt
-                    2. A clearer explanation using a different approach
-                    3. A simpler example of the same concept
-                    4. A new question that breaks down the concept further
+                    - A more detailed explanation focusing on any gaps
+                    - A new practical example
+                    - A connection to real-world programming
+                    - A clear question to verify understanding
                     
-                    Keep the response focused and avoid mentioning correct/incorrect 
-                    or multiple answer scenarios.
+                    Make it conversational and encouraging.
                     """
+                    state['phase'] = 'elaboration'
+
+            elif state['phase'] == 'elaboration':
+                # Providing more detailed explanation and examples
+                follow_up_prompt = f"""
+                Based on the ongoing discussion about {state['current_topic']},
+                provide:
+                - Additional examples and use cases
+                - Common pitfalls and how to avoid them
+                - Best practices related to this concept
+                - A question that helps connect these new points
                 
-                # Clear the expected answer state
-                prog['expected_answer'] = None
-                prog['question_context'] = None
-                
-            else:
-                # Generate a new question
-                current_subtopic = self._get_current_subtopic()
+                Keep the tone conversational and build on previous understanding.
+                """
+                state['phase'] = 'verification'
+
+            elif state['phase'] == 'transition':
+                # Ready to move to next topic
+                state['topics_covered'].append(state['current_topic'])
+                next_topic = self._get_next_topic(state['current_topic'])
+                state['current_topic'] = next_topic
+                state['phase'] = 'teaching'
                 
                 follow_up_prompt = f"""
-                Create a natural response that:
-                1. Builds on the previous discussion
-                2. Explains {current_subtopic} clearly with examples
-                3. Asks a single, specific question
+                Create a natural transition from {state['topics_covered'][-1]} to {next_topic}.
                 
-                Format your response in two parts:
-                RESPONSE:
-                [Your teaching content and question]
+                - Briefly summarize what they've learned
+                - Show how it connects to the next topic
+                - Begin teaching the new concept
+                - End with an introductory question about the new topic
                 
-                ANSWER_KEY:
-                [The expected answer or concept you're looking for]
-                
-                CONTEXT:
-                [Brief description of what you're asking about]
+                Make the transition smooth and logical.
                 """
 
             response = self.api_client.generate_content(follow_up_prompt)
-            
-            # Parse response if it contains answer key
-            if 'RESPONSE:' in response:
-                parts = response.split('RESPONSE:')[1].split('ANSWER_KEY:')
-                teaching_response = parts[0].strip()
-                if len(parts) > 1:
-                    answer_key = parts[1].split('CONTEXT:')[0].strip()
-                    context = parts[1].split('CONTEXT:')[1].strip()
-                    
-                    # Store the expected answer and context
-                    prog['expected_answer'] = answer_key
-                    prog['question_context'] = context
-                
-                return teaching_response
-            
             return response
-            
         except Exception as e:
             return f"Error: {str(e)}"
+
+    def _get_next_topic(self, current_topic):
+        topics = {
+            'variables': 'data_types',
+            'data_types': 'operators',
+            'operators': 'control_flow',
+            # Add more topic progression as needed
+        }
+        return topics.get(current_topic, 'review')
 
     def _check_answer(self, student_answer: str, expected_answer: str) -> bool:
         # Add logic to compare answers intelligently
