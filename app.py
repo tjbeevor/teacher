@@ -197,7 +197,6 @@ class AITutor:
             return "Please start a new session first."
         
         try:
-            # Initialize learning state if not exists
             if 'learning_state' not in st.session_state:
                 st.session_state.learning_state = {
                     'current_topic': 'variables',
@@ -208,7 +207,7 @@ class AITutor:
                         {'name': 'variable_naming', 'covered': False},
                         {'name': 'variable_types', 'covered': False}
                     ],
-                    'phase': 'teaching',  # teaching, question, verification
+                    'phase': 'teaching',
                     'last_concept': None,
                     'last_question': None
                 }
@@ -218,22 +217,47 @@ class AITutor:
 
             if state['phase'] == 'teaching':
                 follow_up_prompt = f"""
-                You are teaching about {current_subtopic['name']} in Python.
+                You are starting to teach about {current_subtopic['name']} in Python.
                 
-                Provide:
-                1. A clear explanation of this specific concept
-                2. A relevant real-world analogy
-                3. A simple code example
-                4. A specific question about what you just taught
+                Provide a comprehensive introduction that includes:
+                1. A warm welcome
+                2. A thorough explanation of what variables are and why we use them
+                3. Multiple real-world analogies that make the concept clear
+                4. Several practical examples, starting simple and getting more complex
+                5. Important points about how variables work in memory
+                6. Common use cases in real programming
                 
-                Stay focused on {current_subtopic['name']} only.
-                Don't introduce new concepts yet.
+                For example, explain:
+                - How variables store data in computer memory
+                - Why we use variables instead of hard-coding values
+                - How variables make code more maintainable and reusable
+                - Different types of data variables can hold
                 
-                Track what concept you're teaching with:
-                CONCEPT: [brief description of current concept]
+                Use multiple code examples like:
+                ```python
+                # Simple variable assignment
+                age = 25
                 
-                End with:
-                QUESTION: [your specific question]
+                # Using variables in calculations
+                new_age = age + 1
+                
+                # Using variables to make code readable
+                total_students = 30
+                students_present = 28
+                absent_students = total_students - students_present
+                ```
+                
+                After the thorough explanation, ask a specific question that tests their understanding 
+                of the core concept you just taught. The question should require them to demonstrate 
+                understanding, not just recall.
+                
+                Track with:
+                CONCEPT: [detailed description of current concept]
+                QUESTION: [your specific question that tests understanding]
+                
+                Make the explanation rich and detailed, but keep it engaging and conversational.
+                Don't ask 'do you have any questions' - instead, ask a specific question that
+                tests their understanding of what you just taught.
                 """
                 state['phase'] = 'question'
 
