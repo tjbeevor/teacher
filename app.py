@@ -258,10 +258,10 @@ class AITutor:
                     'next_topic': 'floats'
                 }
                 # Additional subtopics would continue here...
-            ]
+                ]
+            }
         }
-    }
-    return lesson_structure
+        return lesson_structure
 
 def send_message(self, message: str) -> str:
     try:
