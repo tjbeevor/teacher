@@ -345,23 +345,29 @@ Let's start with {topics[0]}!"""
                 
                 lesson_message = f"""# {current_topic}
 
+# Replace the duplicated lesson_message section (around line 392) with this:
 lesson_message = f"""# {current_topic}
 
+## Learning Objectives
 {lesson.get('objectives', '')}
 
+## Introduction
 {lesson.get('introduction', '')}
 
+## Core Concepts
 {lesson.get('core_concepts', '')}
 
+## Examples
 {lesson.get('examples', '')}
 
+## Practice Question
 {lesson.get('practice', '')}"""
 
-                st.session_state.messages.append({"role": "assistant", "content": lesson_message})
-                st.session_state.last_question = lesson['practice']
-                st.session_state.teaching_state = 'wait_for_answer'
-                st.session_state.lesson_generated = True
-                st.rerun()
+st.session_state.messages.append({"role": "assistant", "content": lesson_message})
+st.session_state.last_question = lesson['practice']
+st.session_state.teaching_state = 'wait_for_answer'
+st.session_state.lesson_generated = True
+st.rerun()
 
         elif st.session_state.teaching_state == 'wait_for_answer':
             answer = st.chat_input("Your answer...")
