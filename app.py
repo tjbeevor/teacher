@@ -193,13 +193,13 @@ class AITutor:
             return f"Error initializing session: {str(e)}"
 
     def send_message(self, message: str) -> str:
-    if not st.session_state.messages:
-        return "Please start a new session first."
+        if not st.session_state.messages:
+            return "Please start a new session first."
     
-    try:
-        # Check if the message seems to be asking for clarification
-        clarification_keywords = ['explain', 'clarify', 'what do you mean', 'could you explain', 'don\'t understand']
-        is_clarification = any(keyword in message.lower() for keyword in clarification_keywords)
+        try:
+            # Check if the message seems to be asking for clarification
+            clarification_keywords = ['explain', 'clarify', 'what do you mean', 'could you explain', 'don\'t understand']
+            is_clarification = any(keyword in message.lower() for keyword in clarification_keywords)
         
         if is_clarification:
             follow_up_prompt = f"""
