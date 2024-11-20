@@ -31,7 +31,43 @@ class AITutor:
         self.topics = []
         self.current_topic_index = 0
 
-    # [Previous method definitions remain the same]
+    def initialize_session(self, subject, level, prerequisites, topic):
+        prompt = f"""
+        As a tutor teaching {subject} at {level} level, list exactly 5 key subtopics to cover for {topic}.
+        Consider the student's background: {prerequisites}
+        Format your response exactly like this example:
+        1. First Topic
+        2. Second Topic
+        3. Third Topic
+        4. Fourth Topic
+        5. Fifth Topic
+        """
+        try:
+            response = self.api_client.generate_content(prompt)
+            if response:
+                # Extract topics and clean them
+                topics = [line.split('. ')[1].strip() 
+                         for line in response.split('\n') 
+                         if line.strip() and line[0].isdigit()]
+                if len(topics) == 5:
+                    self.topics = topics
+                    self.current_topic_index = 0
+                    self.current_topic = self.topics[self.current_topic_index]
+                    return f"""Let's begin our study of {topic}! 
+                    
+Here's what we'll cover:
+
+1. {topics[0]}
+2. {topics[1]}
+3. {topics[2]}
+4. {topics[3]}
+5. {topics[4]}
+
+Let's start with {self.current_topic}!"""
+            return "I'm sorry, but I couldn't generate topics. Please try again."
+        except Exception as e:
+            st.error(f"Error initializing session: {str(e)}")
+            return "I'm sorry, but I encountered an error. Please try again."
 
     def teach_topic(self):
         current_topic = self.current_topic
@@ -105,15 +141,57 @@ class AITutor:
             st.error(f"Error in lesson generation: {str(e)}")
             return None
 
-# Initialize session state
-if 'messages' not in st.session_state:
-    st.session_state.messages = []
-if 'teaching_state' not in st.session_state:
-    st.session_state.teaching_state = 'initialize'
-if 'tutor' not in st.session_state:
-    st.session_state.tutor = AITutor()
-if 'last_question' not in st.session_state:
-    st.session_state.last_question = None
+    def evaluate_answer(self, question, answer):
+        prompt = f"""
+        Question: {question}
+        Student's answer: {answer}
+        
+        Evaluate this answer and provide:
+        1. Whether it's correct (yes/no)
+        2. Detailed feedback explaining why
+        3. Whether to move to the next topic (yes/no)
+        
+        Format: 
+        [CORRECT]
+        yes or no
+        [FEEDBACK]
+        your feedback here
+        [MOVE]
+        yes or no
+        """
+        try:
+            response = self.api_client.generate_content(prompt)
+            if response:
+                parts = response.split('[')
+                evaluation = {}
+                
+                for part in parts:
+                    if 'CORRECT]' in part:
+                        is_correct = 'yes' in part.split(']')[1].lower()
+                        evaluation['evaluation'] = 'correct' if is_correct else 'incorrect'
+                    elif 'FEEDBACK]' in part:
+                        evaluation['feedback'] = part.split(']')[1].strip()
+                    elif 'MOVE]' in part:
+                        evaluation['move_on'] = 'yes' in part.split(']')[1].lower()
+                
+                return evaluation
+            
+            raise ValueError("No response generated")
+            
+        except Exception as e:
+            st.error(f"Error in evaluation: {str(e)}")
+            return {
+                'evaluation': 'incorrect',
+                'feedback': "I couldn't properly evaluate your answer. Please try again.",
+                'move_on': False
+            }
+
+    def move_to_next_topic(self):
+        self.current_topic_index += 1
+        if self.current_topic_index < len(self.topics):
+            self.current_topic = self.topics[self.current_topic_index]
+            return True
+        return False
 
 def main():
     st.title("🎓 AI Tutor")
