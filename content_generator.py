@@ -170,75 +170,75 @@ class AITutor:
             f"Advanced {topic}",
             f"Mastering {topic}"
         ]
-def generate_lesson(self, topic: str, level: str) -> Dict[str, str]:
-        prompt = f"""Create an engaging lesson about {topic} for {level} level students.
-
-[OBJECTIVES]
-List 3 clear learning objectives using Bloom's Taxonomy verbs.
-
-[INTRODUCTION]
-Create an engaging hook and overview of {topic}.
-
-[CORE CONCEPTS]
-Break down {topic} into 3 main ideas:
-1. [Fundamental Concept]
-   • Clear explanation
-   • Simple example
-   • Key terms defined
-2. [Key Principle]
-   • Detailed explanation
-   • Real-world example
-   • Common applications
-3. [Advanced Application]
-   • Complex concepts
-   • Practical usage
-   • Problem-solving approaches
-
-[EXAMPLES]
-Provide 2 clear examples:
-1. Basic example with step-by-step explanation
-2. Advanced example showing practical application
-
-[PRACTICE]
-Create a thought-provoking question that:
-- Tests understanding of multiple concepts
-- Relates to real-world scenarios
-- Requires critical thinking
-- Has multiple valid approaches
-
-Format all content in clear, engaging language appropriate for {level} level."""
-
-        response = self.generate_with_retry(prompt)
-        if not response:
-            return self.get_default_lesson(topic)
-
-        try:
-            sections = {}
-            current_section = None
-            current_content = []
-
-            for line in response.split('\n'):
-                if line.strip().startswith('[') and line.strip().endswith(']'):
-                    if current_section and current_content:
-                        sections[current_section.lower()] = '\n'.join(current_content)
-                    current_section = line.strip()[1:-1]
-                    current_content = []
-                elif line.strip() and current_section:
-                    current_content.append(line.strip())
-
-            if current_section and current_content:
-                sections[current_section.lower()] = '\n'.join(current_content)
-
-            return {
-                'objectives': sections.get('objectives', ''),
-                'introduction': sections.get('introduction', ''),
-                'core_concepts': sections.get('core concepts', ''),
-                'examples': sections.get('examples', ''),
-                'practice': sections.get('practice', '')
-            }
-
-        except Exception:
-            return self.get_default_lesson(topic)
+    def generate_lesson(self, topic: str, level: str) -> Dict[str, str]:
+            prompt = f"""Create an engaging lesson about {topic} for {level} level students.
+    
+    [OBJECTIVES]
+    List 3 clear learning objectives using Bloom's Taxonomy verbs.
+    
+    [INTRODUCTION]
+    Create an engaging hook and overview of {topic}.
+    
+    [CORE CONCEPTS]
+    Break down {topic} into 3 main ideas:
+    1. [Fundamental Concept]
+       • Clear explanation
+       • Simple example
+       • Key terms defined
+    2. [Key Principle]
+       • Detailed explanation
+       • Real-world example
+       • Common applications
+    3. [Advanced Application]
+       • Complex concepts
+       • Practical usage
+       • Problem-solving approaches
+    
+    [EXAMPLES]
+    Provide 2 clear examples:
+    1. Basic example with step-by-step explanation
+    2. Advanced example showing practical application
+    
+    [PRACTICE]
+    Create a thought-provoking question that:
+    - Tests understanding of multiple concepts
+    - Relates to real-world scenarios
+    - Requires critical thinking
+    - Has multiple valid approaches
+    
+    Format all content in clear, engaging language appropriate for {level} level."""
+    
+            response = self.generate_with_retry(prompt)
+            if not response:
+                return self.get_default_lesson(topic)
+    
+            try:
+                sections = {}
+                current_section = None
+                current_content = []
+    
+                for line in response.split('\n'):
+                    if line.strip().startswith('[') and line.strip().endswith(']'):
+                        if current_section and current_content:
+                            sections[current_section.lower()] = '\n'.join(current_content)
+                        current_section = line.strip()[1:-1]
+                        current_content = []
+                    elif line.strip() and current_section:
+                        current_content.append(line.strip())
+    
+                if current_section and current_content:
+                    sections[current_section.lower()] = '\n'.join(current_content)
+    
+                return {
+                    'objectives': sections.get('objectives', ''),
+                    'introduction': sections.get('introduction', ''),
+                    'core_concepts': sections.get('core concepts', ''),
+                    'examples': sections.get('examples', ''),
+                    'practice': sections.get('practice', '')
+                }
+    
+            except Exception:
+                return self.get_default_lesson(topic)
 
     def get_default_lesson(self, topic: str) -> Dict[str, str]:
         return {
@@ -248,78 +248,78 @@ Format all content in clear, engaging language appropriate for {level} level."""
             'examples': "Example 1: Basic application\nExample 2: Advanced usage",
             'practice': f"Explain how {topic} works and provide an example."
         }
-def evaluate_answer(self, question: str, answer: str, level: str) -> Dict[str, Any]:
-        prompt = f"""Evaluate this {level}-level response.
-
-Question: {question}
-Student's Answer: {answer}
-
-Provide evaluation in this format:
-
-[UNDERSTANDING]
-- List concepts understood correctly
-- Identify any misconceptions
-- Note innovative thinking
-
-[FEEDBACK]
-- Specific praise for strong points
-- Areas for improvement
-- Suggested corrections
-
-[NEXT STEPS]
-- Topics to review
-- Practice suggestions
-- Extension questions
-
-[MASTERY]
-Score each area (1-5):
-- Concept Understanding: [1-5]
-- Application: [1-5]
-- Communication: [1-5]
-
-[MOVE_ON]
-yes/no (Based on demonstrated understanding)"""
-
-        response = self.generate_with_retry(prompt)
-        if not response:
-            return self.get_default_evaluation()
-
-        try:
-            evaluation = {}
-            current_section = None
-            current_content = []
-
-            for line in response.split('\n'):
-                if line.strip().startswith('[') and line.strip().endswith(']'):
-                    if current_section and current_content:
-                        evaluation[current_section.lower()] = '\n'.join(current_content)
-                    current_section = line.strip()[1:-1]
-                    current_content = []
-                elif line.strip() and current_section:
-                    current_content.append(line.strip())
-
-            if current_section and current_content:
-                evaluation[current_section.lower()] = '\n'.join(current_content)
-
-            # Calculate overall performance
-            scores = []
-            mastery_text = evaluation.get('mastery', '')
-            score_matches = re.findall(r': (\d+)', mastery_text)
-            scores = [int(score) for score in score_matches if score.isdigit()]
-            average_score = sum(scores) / len(scores) if scores else 3
-
-            move_on = 'yes' in evaluation.get('move_on', '').lower()
-            
-            return {
-                'evaluation': 'correct' if average_score >= 4 else 'partial' if average_score >= 3 else 'incorrect',
-                'understanding': evaluation.get('understanding', ''),
-                'feedback': evaluation.get('feedback', ''),
-                'next_steps': evaluation.get('next steps', ''),
-                'move_on': move_on
-            }
-
-        except Exception:
-            return self.get_default_evaluation()
+    def evaluate_answer(self, question: str, answer: str, level: str) -> Dict[str, Any]:
+            prompt = f"""Evaluate this {level}-level response.
+    
+    Question: {question}
+    Student's Answer: {answer}
+    
+    Provide evaluation in this format:
+    
+    [UNDERSTANDING]
+    - List concepts understood correctly
+    - Identify any misconceptions
+    - Note innovative thinking
+    
+    [FEEDBACK]
+    - Specific praise for strong points
+    - Areas for improvement
+    - Suggested corrections
+    
+    [NEXT STEPS]
+    - Topics to review
+    - Practice suggestions
+    - Extension questions
+    
+    [MASTERY]
+    Score each area (1-5):
+    - Concept Understanding: [1-5]
+    - Application: [1-5]
+    - Communication: [1-5]
+    
+    [MOVE_ON]
+    yes/no (Based on demonstrated understanding)"""
+    
+            response = self.generate_with_retry(prompt)
+            if not response:
+                return self.get_default_evaluation()
+    
+            try:
+                evaluation = {}
+                current_section = None
+                current_content = []
+    
+                for line in response.split('\n'):
+                    if line.strip().startswith('[') and line.strip().endswith(']'):
+                        if current_section and current_content:
+                            evaluation[current_section.lower()] = '\n'.join(current_content)
+                        current_section = line.strip()[1:-1]
+                        current_content = []
+                    elif line.strip() and current_section:
+                        current_content.append(line.strip())
+    
+                if current_section and current_content:
+                    evaluation[current_section.lower()] = '\n'.join(current_content)
+    
+                # Calculate overall performance
+                scores = []
+                mastery_text = evaluation.get('mastery', '')
+                score_matches = re.findall(r': (\d+)', mastery_text)
+                scores = [int(score) for score in score_matches if score.isdigit()]
+                average_score = sum(scores) / len(scores) if scores else 3
+    
+                move_on = 'yes' in evaluation.get('move_on', '').lower()
+                
+                return {
+                    'evaluation': 'correct' if average_score >= 4 else 'partial' if average_score >= 3 else 'incorrect',
+                    'understanding': evaluation.get('understanding', ''),
+                    'feedback': evaluation.get('feedback', ''),
+                    'next_steps': evaluation.get('next steps', ''),
+                    'move_on': move_on
+                }
+    
+            except Exception:
+                return self.get_default_evaluation()
 
     def get_default_evaluation(self) -> Dict[str, Any]:
         return {
@@ -329,154 +329,154 @@ yes/no (Based on demonstrated understanding)"""
             'next_steps': 'Review core concepts and try more practice problems.',
             'move_on': False
         }
-def init_session_state():
-    if 'initialized' not in st.session_state:
-        st.session_state.initialized = False
-    if 'messages' not in st.session_state:
-        st.session_state.messages = []
-    if 'teaching_state' not in st.session_state:
-        st.session_state.teaching_state = 'initialize'
-    if 'tutor' not in st.session_state:
-        st.session_state.tutor = AITutor()
-    if 'current_topic_index' not in st.session_state:
-        st.session_state.current_topic_index = 0
-    if 'topics' not in st.session_state:
-        st.session_state.topics = []
-    if 'last_question' not in st.session_state:
-        st.session_state.last_question = None
-    if 'lesson_generated' not in st.session_state:
-        st.session_state.lesson_generated = False
-
-def main():
-    try:
-        # Header
-        col1, col2, col3 = st.columns([1, 6, 1])
-        with col1:
-            if st.button("🔄 Reset"):
-                st.session_state.clear()
-                st.rerun()
-        with col2:
-            st.title("🎓 AI Tutor")
-
-        # Sidebar
-        with st.sidebar:
-            st.header("Learning Settings")
-            subject = st.selectbox(
-                "Subject",
-                ["Python Programming", "Mathematics", "Physics", "Chemistry", "Biology", "Computer Science"]
-            )
-            level = st.selectbox(
-                "Level",
-                ["Beginner", "Intermediate", "Advanced"]
-            )
-            topic = st.text_input("Topic")
-
-        # Display existing messages
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
-
-        # Main teaching flow
-        if st.session_state.teaching_state == 'initialize':
-            if topic and st.button("Start Learning"):
-                # Generate curriculum
-                topics = st.session_state.tutor.generate_curriculum(subject, level, topic)
-                st.session_state.topics = topics
-                
-                # Format introduction message
-                intro_message = f"""# 📚 Let's learn about {topic}!
-
-## Learning Path
-{chr(10).join(f'{i+1}. {t}' for i, t in enumerate(topics))}
-
-Let's start with {topics[0]}!"""
-                
-                st.session_state.messages = [{"role": "assistant", "content": intro_message}]
-                st.session_state.current_topic_index = 0
-                st.session_state.teaching_state = 'teach_topic'
-                st.session_state.lesson_generated = False
-                st.rerun()
-elif st.session_state.teaching_state == 'teach_topic':
-            if not st.session_state.lesson_generated:
-                current_topic = st.session_state.topics[st.session_state.current_topic_index]
-                lesson = st.session_state.tutor.generate_lesson(current_topic, level)
-                
-                lesson_message = f"""# {current_topic}
-
-## Learning Objectives
-{lesson['objectives']}
-
-## Introduction
-{lesson['introduction']}
-
-## Core Concepts
-{lesson['core_concepts']}
-
-## Examples
-{lesson['examples']}
-
-## Practice
-{lesson['practice']}"""
-
-                st.session_state.messages.append({"role": "assistant", "content": lesson_message})
-                st.session_state.last_question = lesson['practice']
-                st.session_state.teaching_state = 'wait_for_answer'
-                st.session_state.lesson_generated = True
-                st.rerun()
-
-        elif st.session_state.teaching_state == 'wait_for_answer':
-            answer = st.chat_input("Your answer...")
-            if answer:
-                st.session_state.messages.append({"role": "user", "content": answer})
-                
-                evaluation = st.session_state.tutor.evaluate_answer(
-                    st.session_state.last_question,
-                    answer,
-                    level
+    def init_session_state():
+        if 'initialized' not in st.session_state:
+            st.session_state.initialized = False
+        if 'messages' not in st.session_state:
+            st.session_state.messages = []
+        if 'teaching_state' not in st.session_state:
+            st.session_state.teaching_state = 'initialize'
+        if 'tutor' not in st.session_state:
+            st.session_state.tutor = AITutor()
+        if 'current_topic_index' not in st.session_state:
+            st.session_state.current_topic_index = 0
+        if 'topics' not in st.session_state:
+            st.session_state.topics = []
+        if 'last_question' not in st.session_state:
+            st.session_state.last_question = None
+        if 'lesson_generated' not in st.session_state:
+            st.session_state.lesson_generated = False
+    
+    def main():
+        try:
+            # Header
+            col1, col2, col3 = st.columns([1, 6, 1])
+            with col1:
+                if st.button("🔄 Reset"):
+                    st.session_state.clear()
+                    st.rerun()
+            with col2:
+                st.title("🎓 AI Tutor")
+    
+            # Sidebar
+            with st.sidebar:
+                st.header("Learning Settings")
+                subject = st.selectbox(
+                    "Subject",
+                    ["Python Programming", "Mathematics", "Physics", "Chemistry", "Biology", "Computer Science"]
                 )
-                
-                feedback_class = (
-                    'feedback-positive' if evaluation['evaluation'] == 'correct'
-                    else 'feedback-partial' if evaluation['evaluation'] == 'partial'
-                    else 'feedback-negative'
+                level = st.selectbox(
+                    "Level",
+                    ["Beginner", "Intermediate", "Advanced"]
                 )
-
-                feedback = f"""<div class='feedback-box {feedback_class}'>
-
-### Understanding
-{evaluation['understanding']}
-
-### Feedback
-{evaluation['feedback']}
-
-### Next Steps
-{evaluation['next_steps']}</div>"""
-
-                st.session_state.messages.append({"role": "assistant", "content": feedback})
-                
-                if evaluation['move_on']:
-                    st.session_state.current_topic_index += 1
-                    if st.session_state.current_topic_index < len(st.session_state.topics):
-                        st.session_state.teaching_state = 'teach_topic'
-                        st.session_state.lesson_generated = False
-                    else:
-                        st.session_state.teaching_state = 'finished'
-                st.rerun()
-
-        elif st.session_state.teaching_state == 'finished':
-            st.success("🎉 Congratulations! You've completed all topics!")
-            if st.button("Start New Topic"):
-                st.session_state.clear()
-                init_session_state()
-                st.rerun()
-
-    except Exception as e:
-        st.error(f"An unexpected error occurred: {str(e)}")
-        st.info("Please try resetting the application using the button in the top left corner.")
-
-if __name__ == "__main__":
-    try:
-        init_session_state()
-        main()
-    except Exception as e:
-        st.error(f"Error during startup: {str(e)}")
+                topic = st.text_input("Topic")
+    
+            # Display existing messages
+            for message in st.session_state.messages:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+    
+            # Main teaching flow
+            if st.session_state.teaching_state == 'initialize':
+                if topic and st.button("Start Learning"):
+                    # Generate curriculum
+                    topics = st.session_state.tutor.generate_curriculum(subject, level, topic)
+                    st.session_state.topics = topics
+                    
+                    # Format introduction message
+                    intro_message = f"""# 📚 Let's learn about {topic}!
+    
+    ## Learning Path
+    {chr(10).join(f'{i+1}. {t}' for i, t in enumerate(topics))}
+    
+    Let's start with {topics[0]}!"""
+                    
+                    st.session_state.messages = [{"role": "assistant", "content": intro_message}]
+                    st.session_state.current_topic_index = 0
+                    st.session_state.teaching_state = 'teach_topic'
+                    st.session_state.lesson_generated = False
+                    st.rerun()
+    elif st.session_state.teaching_state == 'teach_topic':
+                if not st.session_state.lesson_generated:
+                    current_topic = st.session_state.topics[st.session_state.current_topic_index]
+                    lesson = st.session_state.tutor.generate_lesson(current_topic, level)
+                    
+                    lesson_message = f"""# {current_topic}
+    
+    ## Learning Objectives
+    {lesson['objectives']}
+    
+    ## Introduction
+    {lesson['introduction']}
+    
+    ## Core Concepts
+    {lesson['core_concepts']}
+    
+    ## Examples
+    {lesson['examples']}
+    
+    ## Practice
+    {lesson['practice']}"""
+    
+                    st.session_state.messages.append({"role": "assistant", "content": lesson_message})
+                    st.session_state.last_question = lesson['practice']
+                    st.session_state.teaching_state = 'wait_for_answer'
+                    st.session_state.lesson_generated = True
+                    st.rerun()
+    
+            elif st.session_state.teaching_state == 'wait_for_answer':
+                answer = st.chat_input("Your answer...")
+                if answer:
+                    st.session_state.messages.append({"role": "user", "content": answer})
+                    
+                    evaluation = st.session_state.tutor.evaluate_answer(
+                        st.session_state.last_question,
+                        answer,
+                        level
+                    )
+                    
+                    feedback_class = (
+                        'feedback-positive' if evaluation['evaluation'] == 'correct'
+                        else 'feedback-partial' if evaluation['evaluation'] == 'partial'
+                        else 'feedback-negative'
+                    )
+    
+                    feedback = f"""<div class='feedback-box {feedback_class}'>
+    
+    ### Understanding
+    {evaluation['understanding']}
+    
+    ### Feedback
+    {evaluation['feedback']}
+    
+    ### Next Steps
+    {evaluation['next_steps']}</div>"""
+    
+                    st.session_state.messages.append({"role": "assistant", "content": feedback})
+                    
+                    if evaluation['move_on']:
+                        st.session_state.current_topic_index += 1
+                        if st.session_state.current_topic_index < len(st.session_state.topics):
+                            st.session_state.teaching_state = 'teach_topic'
+                            st.session_state.lesson_generated = False
+                        else:
+                            st.session_state.teaching_state = 'finished'
+                    st.rerun()
+    
+            elif st.session_state.teaching_state == 'finished':
+                st.success("🎉 Congratulations! You've completed all topics!")
+                if st.button("Start New Topic"):
+                    st.session_state.clear()
+                    init_session_state()
+                    st.rerun()
+    
+        except Exception as e:
+            st.error(f"An unexpected error occurred: {str(e)}")
+            st.info("Please try resetting the application using the button in the top left corner.")
+    
+    if __name__ == "__main__":
+        try:
+            init_session_state()
+            main()
+        except Exception as e:
+            st.error(f"Error during startup: {str(e)}")
