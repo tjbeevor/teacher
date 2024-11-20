@@ -512,6 +512,9 @@ def main():
         st.rerun()
 
 
+
+
+
 def main():
     st.title("🎓 AI Tutor")
     
@@ -520,7 +523,7 @@ def main():
         st.header("Learning Settings")
         subject = st.selectbox(
             "Subject",
-            ["Mathematics", "Physics", "Chemistry", "Biology", "Computer Science", "Python Programming"]
+            ["Python Programming", "Mathematics", "Physics", "Chemistry", "Biology", "Computer Science"]
         )
         level = st.selectbox(
             "Level",
@@ -534,7 +537,6 @@ def main():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # Initial state - Topic selection
     if st.session_state.teaching_state == 'initialize':
         if topic and st.button("Start Learning"):
             with st.spinner("Preparing your learning path..."):
@@ -545,46 +547,43 @@ def main():
                 st.session_state.teaching_state = 'teach_topic'
                 st.rerun()
 
-    # Teaching state - Present lesson
     elif st.session_state.teaching_state == 'teach_topic':
         try:
             with st.spinner("Preparing your lesson..."):
                 content = st.session_state.tutor.teach_topic()
-                if content and all(key in content for key in ['lesson', 'examples', 'question']):
-                    message = f"""# {st.session_state.tutor.current_topic}
+                if not content:
+                    raise ValueError("Failed to generate lesson content")
+                
+                message = f"""# {st.session_state.tutor.current_topic}
 
-## 🔑 Let's Understand This!
+## 🔑 Key Concepts
 {content['lesson']}
 
-## 📝 See It In Action
+## 📝 Examples
 {content['examples']}
 
-## ❓ Let's Chat About This
+## ❓ Practice Question
 {content['question']}
 """
-                    st.session_state.messages.append({"role": "assistant", "content": message})
-                    st.session_state.last_question = content['question']
-                    st.session_state.teaching_state = 'wait_for_answer'
-                    st.rerun()
-                else:
-                    st.error("I couldn't generate the lesson properly. Let's try again!")
-                    st.session_state.teaching_state = 'initialize'
-                    st.rerun()
+                st.session_state.messages.append({"role": "assistant", "content": message})
+                st.session_state.last_question = content['question']
+                st.session_state.teaching_state = 'wait_for_answer'
+                st.rerun()
+
         except Exception as e:
             st.error(f"An error occurred while preparing the lesson: {str(e)}")
+            # Reset to initial state if there's an error
             st.session_state.teaching_state = 'initialize'
             st.rerun()
 
-    # Waiting for answer state
     elif st.session_state.teaching_state == 'wait_for_answer':
         if prompt := st.chat_input("Share your thoughts..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.spinner("Thinking about your response..."):
+            with st.spinner("Analyzing your response..."):
                 evaluation = st.session_state.tutor.evaluate_answer(
                     st.session_state.last_question, prompt
                 )
                 
-                # Format feedback with appropriate emoji
                 if evaluation['evaluation'] == 'correct':
                     feedback = f"✨ Great thinking! {evaluation['feedback']}"
                 else:
@@ -599,13 +598,27 @@ def main():
                         st.session_state.teaching_state = 'finished'
                 st.rerun()
 
-    # Finished state
     elif st.session_state.teaching_state == 'finished':
         st.success("🎉 Congratulations! You've completed all topics!")
         if st.button("Start New Topic"):
             st.session_state.teaching_state = 'initialize'
             st.session_state.messages = []
             st.rerun()
+
+# Initialize session state
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
+if 'teaching_state' not in st.session_state:
+    st.session_state.teaching_state = 'initialize'
+if 'tutor' not in st.session_state:
+    st.session_state.tutor = AITutor()
+if 'last_question' not in st.session_state:
+    st.session_state.last_question = None
+
+
+
+
+
 
 if __name__ == "__main__":
     try:
