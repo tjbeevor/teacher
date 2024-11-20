@@ -215,77 +215,56 @@ class AITutor:
             state = st.session_state.learning_state
             current_subtopic = state['subtopics'][state['subtopic_index']]
 
-            if state['phase'] == 'teaching':
-                follow_up_prompt = f"""
-                You are starting to teach about {current_subtopic['name']} in Python.
-                
-                Provide a comprehensive introduction that includes:
-                1. A warm welcome
-                2. A thorough explanation of what variables are and why we use them
-                3. Multiple real-world analogies that make the concept clear
-                4. Several practical examples, starting simple and getting more complex
-                5. Important points about how variables work in memory
-                6. Common use cases in real programming
-                
-                For example, explain:
-                - How variables store data in computer memory
-                - Why we use variables instead of hard-coding values
-                - How variables make code more maintainable and reusable
-                - Different types of data variables can hold
-                
-                Use multiple code examples like:
-                ```python
-                # Simple variable assignment
-                age = 25
-                
-                # Using variables in calculations
-                new_age = age + 1
-                
-                # Using variables to make code readable
-                total_students = 30
-                students_present = 28
-                absent_students = total_students - students_present
-                ```
-                
-                After the thorough explanation, ask a specific question that tests their understanding 
-                of the core concept you just taught. The question should require them to demonstrate 
-                understanding, not just recall.
-                
-                Track with:
-                CONCEPT: [detailed description of current concept]
-                QUESTION: [your specific question that tests understanding]
-                
-                Make the explanation rich and detailed, but keep it engaging and conversational.
-                Don't ask 'do you have any questions' - instead, ask a specific question that
-                tests their understanding of what you just taught.
-                """
-                state['phase'] = 'question'
+            # Initialize follow_up_prompt
+            follow_up_prompt = ""
 
-            elif state['phase'] == 'verification':
-                # Process student's answer
+            if state['phase'] == 'teaching':
+                # Your existing teaching phase prompt...
+                state['phase'] = 'question'
+            
+            elif state['phase'] == 'question':
+                # Handle student's response
                 follow_up_prompt = f"""
                 The student answered: "{message}"
-                Regarding the concept: {state['last_concept']}
-                Previous question was: {state['last_question']}
+                Previous concept: {state['last_concept']}
                 
-                If they show understanding:
-                - Confirm their understanding
-                - Add more detail about {current_subtopic['name']}
-                - Show another example
-                - Ask a follow-up question about the SAME concept
+                Provide:
+                1. Specific acknowledgment of what they understood correctly
+                2. Additional context or clarification where needed
+                3. A concrete example that builds on their understanding
+                4. A follow-up question that goes deeper into the same concept
                 
-                If they show confusion:
-                - Acknowledge their attempt
-                - Explain {current_subtopic['name']} differently
-                - Use a simpler example
-                - Ask an easier question about the SAME concept
-                
-                IMPORTANT: Stay focused on {current_subtopic['name']}.
-                Do NOT introduce new topics or concepts yet.
+                Make your response:
+                - Detailed and encouraging
+                - Focused on {current_subtopic['name']}
+                - Building on their current understanding
                 
                 Track with:
-                CONCEPT: [same concept as before]
+                CONCEPT: {state['last_concept']}
                 QUESTION: [your follow-up question]
+                """
+                state['phase'] = 'verification'
+            
+            elif state['phase'] == 'verification':
+                # Handle the follow-up response
+                follow_up_prompt = f"""
+                The student responded: "{message}"
+                
+                If they show good understanding:
+                - Acknowledge their grasp of the concept
+                - Provide more advanced examples
+                - Move towards the next subtopic with a transitional question
+                
+                If they need more clarity:
+                - Address any misconceptions
+                - Provide simpler examples
+                - Ask a more basic question about the same concept
+                
+                Stay focused on {current_subtopic['name']}.
+                
+                Track with:
+                CONCEPT: {state['last_concept']}
+                QUESTION: [your next question]
                 """
                 state['phase'] = 'question'
 
@@ -297,7 +276,7 @@ class AITutor:
                 state['last_concept'] = parts[0].strip()
                 if len(parts) > 1:
                     state['last_question'] = parts[1].strip()
-                    response = response.split('CONCEPT:')[0] + parts[1]  # Remove tracking info from response
+                    response = response.split('CONCEPT:')[0] + parts[1]  # Remove tracking info
             
             return response
 
