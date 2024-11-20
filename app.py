@@ -219,68 +219,65 @@ class AITutor:
                     ],
                     'phase': 'teaching',
                     'last_concept': None,
-                    'last_question': None
+                    'last_question': None,
+                    'expected_answer': None
                 }
 
             state = st.session_state.learning_state
             current_subtopic = state['subtopics'][state['subtopic_index']]
 
-            if message and state['phase'] == 'question':
+            if state['phase'] == 'teaching':
                 follow_up_prompt = f"""
-                The student responded: "{message}"
-                Previous concept: Variables and variable assignment
+                Provide a comprehensive introduction to {current_subtopic['name']} that includes:
+                1. A warm welcome
+                2. Clear explanation with analogies
+                3. Code examples
+                4. A specific question to test understanding
                 
-                Based on their response, provide:
-                1. Specific acknowledgment of their correct understanding about creating variables
-                2. Elaboration on variable assignment concepts
-                3. A more complex example showing variable usage
-                4. A follow-up question about variable manipulation
+                Format your response as:
+                DISPLAY:
+                [Your teaching content and question]
+
+                ANSWER_KEY:
+                [The expected answer or concept you're looking for]
                 
-                Make your response:
-                - Detailed and encouraging
-                - Building on their understanding of variable assignment
-                - Including practical examples
-                - Leading to deeper concepts about variables
-                
-                Important: Ensure the response forms a complete, coherent explanation
-                that builds on their current understanding.
-                """
-                state['phase'] = 'verification'
-            
-            elif state['phase'] == 'verification':
-                follow_up_prompt = f"""
-                The student is learning about variables in Python.
-                Their previous answer showed basic understanding.
-                
-                Provide:
-                1. Confirmation of their understanding
-                2. A more advanced example of variable usage
-                3. Explanation of a related concept (like variable reassignment)
-                4. A question that tests their understanding of this new concept
-                
-                Make the response detailed and natural, avoiding any meta-language
-                or section markers.
-                """
-                state['phase'] = 'question'
-            
-            else:
-                # Default to teaching if we're in an unknown state
-                follow_up_prompt = f"""
-                Teach the fundamentals of variables in Python.
-                Include:
-                1. Clear explanation with real-world analogies
-                2. Basic examples of variable creation
-                3. Practical use cases
-                4. A simple question to check understanding
-                
-                Make it conversational and engaging.
+                Never include the answer in the display text.
                 """
                 state['phase'] = 'question'
 
+            elif state['phase'] == 'question':
+                follow_up_prompt = f"""
+                The student responded: "{message}"
+                Expected concept understanding: {state['expected_answer']}
+
+                Provide:
+                1. Response to their answer
+                2. Additional explanation if needed
+                3. A follow-up question
+
+                Format as:
+                DISPLAY:
+                [Your response and next question]
+
+                ANSWER_KEY:
+                [The expected answer for your new question]
+
+                Never include the answer in the display text.
+                """
+                state['phase'] = 'verification'
+
             response = self.api_client.generate_content(follow_up_prompt)
             if not response:
-                return "Let me try explaining this in a different way. Variables are like labeled containers..."
-                
+                return "Let me try explaining this in a different way..."
+
+            # Parse response to separate display text and answer key
+            if 'DISPLAY:' in response:
+                parts = response.split('DISPLAY:')[1].split('ANSWER_KEY:')
+                display_text = parts[0].strip()
+                if len(parts) > 1:
+                    state['expected_answer'] = parts[1].strip()
+                return display_text
+            
             return response
 
         except Exception as e:
