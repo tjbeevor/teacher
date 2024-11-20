@@ -401,8 +401,8 @@ def main():
         elif st.session_state.teaching_state == 'teach_topic':
             with st.spinner("Preparing your lesson..."):
                 content = st.session_state.tutor.teach_topic()
-                                if content:
-                                    message = f"""# {st.session_state.tutor.current_topic}
+                if content:
+                    message = f"""# {st.session_state.tutor.current_topic}
                 
                 {content['lesson']}
                 
