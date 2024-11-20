@@ -110,10 +110,13 @@ class CachingSystem:
     def __init__(self):
         self.cache = {}
         self.cache_ttl = 3600  # 1 hour
+        self._get_cached_response = lru_cache(maxsize=100)(self._get_cached_response)
 
-    @lru_cache(maxsize=100)
-    def get_cached_response(self, prompt: str):
+    def _get_cached_response(self, prompt: str):
         return self.cache.get(prompt)
+
+    def get_cached_response(self, prompt: str):
+        return self._get_cached_response(prompt)
 
     def cache_response(self, prompt: str, response: str):
         self.cache[prompt] = response
