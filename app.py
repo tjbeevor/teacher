@@ -69,53 +69,53 @@ Let's start with {self.current_topic}!"""
             return "I'm sorry, but I encountered an error. Please try again."
 
     def teach_topic(self):
-    prompt = f"""
-    Create a comprehensive lesson about {self.current_topic}
-    
-    Format your response exactly following this template:
-    
-    [KEY CONCEPT]
-    First, provide a clear, high-level overview (1-2 sentences).
-    Then, break down 3-4 main aspects of the topic in detail.
-    Include important principles, common use cases, and key points to remember.
-    
-    [EXAMPLES]
-    Provide 3-4 practical examples, starting simple and increasing in complexity.
-    Each example should:
-    - Show the code
-    - Explain what it does
-    - Highlight key concepts being demonstrated
-    Include any relevant output or results.
-    
-    [PRACTICE]
-    Create a practice question that:
-    - Tests understanding of multiple aspects covered
-    - Requires practical application
-    - Has a clear, specific goal
-    """
-    try:
-        response = self.api_client.generate_content(prompt)
-        if response:
-            parts = response.split('[')
-            lesson = {}
-            
-            for part in parts:
-                if 'KEY CONCEPT]' in part:
-                    lesson['lesson'] = part.split(']')[1].strip()
-                elif 'EXAMPLES]' in part:
-                    lesson['examples'] = part.split(']')[1].strip()
-                elif 'PRACTICE]' in part:
-                    lesson['question'] = part.split(']')[1].strip()
-            
-            return lesson
+        prompt = f"""
+        Create a comprehensive lesson about {self.current_topic}
         
-        raise ValueError("No response generated")
+        Format your response exactly following this template:
         
-    except Exception as e:
-        st.error(f"Error in lesson generation: {str(e)}")
-        # Provide rich default content
-        return {
-            'lesson': """In Python, data types and variables are fundamental building blocks of programming. A variable is a named container that stores data, while a data type defines what kind of data can be stored and what operations can be performed on it.
+        [KEY CONCEPT]
+        First, provide a clear, high-level overview (1-2 sentences).
+        Then, break down 3-4 main aspects of the topic in detail.
+        Include important principles, common use cases, and key points to remember.
+        
+        [EXAMPLES]
+        Provide 3-4 practical examples, starting simple and increasing in complexity.
+        Each example should:
+        - Show the code
+        - Explain what it does
+        - Highlight key concepts being demonstrated
+        Include any relevant output or results.
+        
+        [PRACTICE]
+        Create a practice question that:
+        - Tests understanding of multiple aspects covered
+        - Requires practical application
+        - Has a clear, specific goal
+        """
+        try:
+            response = self.api_client.generate_content(prompt)
+            if response:
+                parts = response.split('[')
+                lesson = {}
+                
+                for part in parts:
+                    if 'KEY CONCEPT]' in part:
+                        lesson['lesson'] = part.split(']')[1].strip()
+                    elif 'EXAMPLES]' in part:
+                        lesson['examples'] = part.split(']')[1].strip()
+                    elif 'PRACTICE]' in part:
+                        lesson['question'] = part.split(']')[1].strip()
+                
+                return lesson
+            
+            raise ValueError("No response generated")
+            
+        except Exception as e:
+            st.error(f"Error in lesson generation: {str(e)}")
+            # Provide rich default content
+            return {
+                'lesson': """In Python, data types and variables are fundamental building blocks of programming. A variable is a named container that stores data, while a data type defines what kind of data can be stored and what operations can be performed on it.
 
 Key Aspects:
 
@@ -147,7 +147,7 @@ Key Aspects:
    • Global variables: Defined outside functions
    • Namespace considerations
 """,
-            'examples': """1. Basic Variable Assignment and Types
+                'examples': """1. Basic Variable Assignment and Types
 ```python
 # Simple variable assignments
 age = 25                 # Integer
@@ -222,7 +222,7 @@ print(f"Total: {formatted_cost}")
 # Total: $5.40
 ```
 """,
-            'question': """Create a program that does the following:
+                'question': """Create a program that does the following:
 
 1. Create three variables:
    - A string containing your full name
@@ -233,7 +233,7 @@ print(f"Total: {formatted_cost}")
 3. Create an f-string that prints: "My name is [name], I am [age] years old and [height] feet tall."
 
 Show your complete code with all variables and calculations."""
-        }
+            }
 
     def evaluate_answer(self, question, answer):
         prompt = f"""
@@ -306,71 +306,131 @@ st.set_page_config(
 
 # Add CSS
 st.markdown("""
-        <style>
-        .concept-header {
-            color: #1E88E5;
-            font-size: 1.5em;
-            margin-top: 1.5em;
-            margin-bottom: 0.5em;
-        }
-        .concept-content {
-            background-color: #F8F9FA;
-            padding: 1em;
-            border-left: 4px solid #1E88E5;
-            margin-bottom: 1.5em;
-        }
-        .example-header {
-            color: #43A047;
-            font-size: 1.5em;
-            margin-top: 1.5em;
-            margin-bottom: 0.5em;
-        }
-        .example-content {
-            background-color: #F8F9FA;
-            padding: 1em;
-            border-left: 4px solid #43A047;
-            margin-bottom: 1.5em;
-        }
-        .question-header {
-            color: #FB8C00;
-            font-size: 1.5em;
-            margin-top: 1.5em;
-            margin-bottom: 0.5em;
-        }
-        .question-content {
-            background-color: #FFF3E0;
-            padding: 1em;
-            border-left: 4px solid #FB8C00;
-            margin-bottom: 1.5em;
-        }
-        code {
-            padding: 0.2em 0.4em;
-            background-color: #E3F2FD;
-            border-radius: 3px;
-        }
-        pre {
-            padding: 1em;
-            background-color: #E3F2FD;
-            border-radius: 5px;
-            margin: 1em 0;
-        }
-        </style>
-        """, unsafe_allow_html=True)
+<style>
+.concept-header {
+    color: #1E88E5;
+    font-size: 1.5em;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+}
+.concept-content {
+    background-color: #F8F9FA;
+    padding: 1em;
+    border-left: 4px solid #1E88E5;
+    margin-bottom: 1.5em;
+}
+.example-header {
+    color: #43A047;
+    font-size: 1.5em;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+}
+.example-content {
+    background-color: #F8F9FA;
+    padding: 1em;
+    border-left: 4px solid #43A047;
+    margin-bottom: 1.5em;
+}
+.question-header {
+    color: #FB8C00;
+    font-size: 1.5em;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+}
+.question-content {
+    background-color: #FFF3E0;
+    padding: 1em;
+    border-left: 4px solid #FB8C00;
+    margin-bottom: 1.5em;
+}
+code {
+    padding: 0.2em 0.4em;
+    background-color: #E3F2FD;
+    border-radius: 3px;
+}
+pre {
+    padding: 1em;
+    background-color: #E3F2FD;
+    border-radius: 5px;
+    margin: 1em 0;
+}
+</style>
+""", unsafe_allow_html=True)
 
-        st.markdown(f"## {st.session_state.tutor.current_topic}")
+def main():
+    st.title("🎓 AI Tutor")
+    
+    # Sidebar
+    with st.sidebar:
+        st.header("Learning Settings")
+        subject = st.selectbox(
+            "Subject",
+            ["Mathematics", "Physics", "Chemistry", "Biology", "Computer Science", "Python Programming"]
+        )
+        level = st.selectbox(
+            "Level",
+            ["Beginner", "Intermediate", "Advanced"]
+        )
+        topic = st.text_input("Topic")
+        prerequisites = st.text_area("Your Background (Optional)")
+
+    # Main content area with better spacing and formatting
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            if message["role"] == "assistant" and "Let's begin our study" in message["content"]:
+                # Special formatting for the introduction
+                st.markdown(message["content"])
+            elif message["role"] == "assistant" and "Key Concept" in message["content"]:
+                # Format the lesson content
+                content_parts = message["content"].split("###")
+                
+                # Topic title
+                st.header(content_parts[0].replace("#", "").strip())
+                
+                # Key Concept
+                st.subheader("🔑 Key Concept")
+                concept_text = content_parts[1].replace("Key Concept", "").strip()
+                st.write(concept_text)
+                
+                # Examples
+                st.subheader("📝 Examples")
+                examples_text = content_parts[2].replace("Examples", "").strip()
+                st.markdown(examples_text)
+                
+                # Practice Question
+                st.subheader("❓ Practice Question")
+                question_text = content_parts[3].replace("Practice Question", "").strip()
+                question_text = question_text.replace("Please type your answer below!", "").strip()
+                st.info(question_text)
+            else:
+                # Regular message
+                st.markdown(message["content"])
+
+    if st.session_state.teaching_state == 'initialize':
+        if topic and st.button("Start Learning"):
+            response = st.session_state.tutor.initialize_session(
+                subject, level, prerequisites, topic
+            )
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            st.session_state.teaching_state = 'teach_topic'
+            st.rerun()
+
+    elif st.session_state.teaching_state == 'teach_topic':
+        with st.spinner("Preparing your lesson..."):
+            content = st.session_state.tutor.teach_topic()
         
-        # Key Concept Section
-        st.markdown('<p class="concept-header">🔑 Key Concept</p>', unsafe_allow_html=True)
-        st.markdown('<div class="concept-content">' + content['lesson'] + '</div>', unsafe_allow_html=True)
-        
-        # Examples Section
-        st.markdown('<p class="example-header">📝 Examples</p>', unsafe_allow_html=True)
-        st.markdown('<div class="example-content">' + content['examples'] + '</div>', unsafe_allow_html=True)
-        
-        # Practice Question Section
-        st.markdown('<p class="question-header">❓ Practice Question</p>', unsafe_allow_html=True)
-        st.markdown('<div class="question-content">' + content['question'] + '</div>', unsafe_allow_html=True)
-        
+        message = f"""## {st.session_state.tutor.current_topic}
+
+### 🔑 Key Concept
+{content['lesson']}
+
+### 📝 Examples
+{content['examples']}
+
+### ❓ Practice Question
+{content['question']}
+"""
+        st.session_state.messages.append({"role": "assistant", "content": message})
         st.session_state.last_question = content['question']
         st.session_state.teaching_state = 'wait_for_answer'
         st.rerun()
