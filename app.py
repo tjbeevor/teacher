@@ -196,67 +196,93 @@ class AITutor:
     def send_message(self, message: str) -> str:
         if not st.session_state.messages:
             return "Please start a new session first."
-    
+        
         try:
-            # Check if the message seems to be asking for clarification or shows uncertainty
-            clarification_keywords = ['explain', 'clarify', 'what do you mean', 'could you explain', 'don\'t understand', 
-                                    'not sure', 'confused', 'don\'t know', 'unclear']
-            is_clarification = any(keyword in message.lower() for keyword in clarification_keywords)
+            # Initialize topic tracking if not exists
+            if 'current_topic_index' not in st.session_state:
+                st.session_state.current_topic_index = 0
+                st.session_state.topics = [
+                    "variables_basics",
+                    "data_types",
+                    "variable_naming",
+                    "type_conversion",
+                    "variable_scope",
+                    # Add more topics as needed
+                ]
+
+            # Check for progression keywords
+            progression_keywords = ['next topic', 'move on', 'continue', 'what\'s next', 'next lesson']
+            is_progression = any(keyword in message.lower() for keyword in progression_keywords)
             
-            if is_clarification:
+            if is_progression:
+                st.session_state.current_topic_index += 1
+                if st.session_state.current_topic_index >= len(st.session_state.topics):
+                    return "Congratulations! You've completed all topics in this session. Would you like to take a quiz to test your knowledge?"
+                
+                current_topic = st.session_state.topics[st.session_state.current_topic_index]
+                follow_up_prompt = f"""
+                Transition naturally to the next topic: {current_topic}. 
+                
+                Make your response:
+                - Acknowledge completion of previous topic
+                - Naturally bridge to the new topic
+                - Introduce key concepts
+                - Include a practical example
+                - End with an engaging question
+                
+                Keep it conversational and avoid any instructional metadata.
+                """
+            elif any(keyword in message.lower() for keyword in ['explain', 'clarify', 'don\'t understand']):
+                # Your existing clarification handling...
                 follow_up_prompt = f"""
                 The student needs clarification: "{message}"
                 
-                Respond as an experienced, patient teacher would:
-                - Start with warm encouragement about their willingness to ask questions
-                - Explain the concept using a real-world analogy first
-                - Then show a concrete coding example
-                - Build from what they already know
-                - Include detailed explanations with your examples
-                - End with a question that connects to their original confusion
+                Provide a clear, focused explanation and then suggest moving forward:
+                - Address their specific question
+                - Use simple analogies
+                - Show a practical example
+                - Check understanding
+                - If they understand, suggest moving to the next topic
                 
-                Make your response detailed, engaging, and conversational, as if you're having 
-                a natural discussion. Avoid using section headers or numbered lists.
+                Keep it conversational and natural.
                 """
             else:
+                # Your existing response handling...
                 follow_up_prompt = f"""
                 The student responded: "{message}"
                 
-                Respond as an experienced, patient teacher would:
-                - Acknowledge specific parts of their answer that show understanding
-                - If there are misconceptions, use them as a bridge to deeper understanding
-                - Expand on their answer with additional context and connections
-                - Share a detailed example that builds on their current knowledge
-                - Include both the concept and practical application
-                - Ask a thought-provoking follow-up question that extends their thinking
+                Respond naturally, and if they show understanding:
+                - Acknowledge their comprehension
+                - Build on their response
+                - Give a practical example
+                - Check if they're ready to move on
+                - Suggest the next topic if appropriate
                 
-                Make your response detailed, engaging, and conversational, as if you're having 
-                a natural discussion. Avoid using section headers or numbered lists. Use code 
-                examples where appropriate, but always explain the code thoroughly.
+                Keep it conversational and engaging.
                 """
             
-            # Get more context from previous messages
-            previous_messages = st.session_state.messages[-3:]  # Get last three messages for better context
+            # Get previous context
+            previous_messages = st.session_state.messages[-3:]
             context = "\n".join([f"{msg['role']}: {msg['content']}" for msg in previous_messages])
             
-            follow_up_prompt += f"""
-            
-            Previous context:
-            {context}
-            
-            Remember to:
-            - Maintain a warm, encouraging tone
-            - Provide detailed explanations
-            - Use rich, practical examples
-            - Make natural connections between concepts
-            - Keep the conversation flowing naturally
-            - Avoid any instructional metadata or section markers
-            """
+            follow_up_prompt += f"\n\nPrevious context:\n{context}"
             
             response = self.api_client.generate_content(follow_up_prompt)
             return response
         except Exception as e:
             return f"Error: {str(e)}"
+
+
+    def get_topic_content(self, topic: str) -> str:
+    topic_content = {
+        "variables_basics": "Introduction to variables and basic assignments",
+        "data_types": "Different data types in Python (int, float, str, etc.)",
+        "variable_naming": "Rules and conventions for naming variables",
+        "type_conversion": "Converting between different data types",
+        "variable_scope": "Understanding variable scope and lifetime",
+        # Add more topics and their content
+    }
+    return topic_content.get(topic, "Topic content not found")
 
 
    
